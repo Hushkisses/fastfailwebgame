@@ -2,20 +2,19 @@ import { Application, Container, Graphics, Text } from "pixi.js";
 import { CLIENT_GOAL_FLOOR } from "../config/climbConfig";
 import type { HintFlash } from "../hint/collectHints";
 import type { PickTarget } from "../logic/pickPath";
-import { drawBridgeIsoBlock, drawCrackBurst, drawSideGlassShards } from "./drawGlass";
+import { drawBridgeVerticalBlock, drawCrackBurst, drawSideGlassShards } from "./drawGlass";
 import {
   BRIDGE_MARGIN,
+  floorWorldY,
   GLASS_HALF_H,
   ISO_TOP_HW,
   ISO_TOP_HV,
-  LANE_LOWER_Y,
-  LANE_UPPER_Y,
+  LANE_OFFSET_X,
   avatarWorldPos,
-  choiceColumnWorldX,
   columnFog,
   fallTargetStartWorld,
   tileWorldCenter,
-  TILE_GAP,
+  TILE_VERTICAL_GAP,
   visibleColumnBand,
   type ScrollSide
 } from "./sidescrollLayout";
@@ -55,7 +54,7 @@ type FallAnim = {
   durationMs: number;
 };
 
-/** 완전 2D 직교 좌표 횡스크롤 — 상단/하단 수평, 중앙 y=0. */
+/** 하단→상단 수직 진행, 카메라 수직 추적 */
 export class TowerWorldView {
   readonly worldRoot = new Container();
   private readonly railG = new Graphics();
@@ -71,8 +70,9 @@ export class TowerWorldView {
   private broken = new Set<string>();
   private readonly localBreakStarted = new Map<string, number>();
 
-  private camLX = Number.NaN;
-  private readonly camLerp = 0.2;
+  private camTX = Number.NaN;
+  private camTY = Number.NaN;
+  private readonly camLerp = 0.18;
 
   constructor(_app: Application) {
     this.worldRoot.sortableChildren = true;
@@ -140,11 +140,17 @@ export class TowerWorldView {
 
     const { lo, hi } = visibleColumnBand(inp.selfFloor);
     const view = avatarWorldPos(inp.selfFloor, inp.selfSide);
-    const desiredCamX = inp.screenW * (1 / 3) - view.x;
-    if (!Number.isFinite(this.camLX)) this.camLX = desiredCamX;
-    else this.camLX += (desiredCamX - this.camLX) * this.camLerp;
 
-    this.worldRoot.position.set(this.camLX, inp.screenH * 0.5);
+    const desiredCamX = inp.screenW * 0.5 - view.x;
+    const desiredCamY = inp.screenH * 0.7 - view.y;
+
+    if (!Number.isFinite(this.camTX)) this.camTX = desiredCamX;
+    else this.camTX += (desiredCamX - this.camTX) * this.camLerp;
+
+    if (!Number.isFinite(this.camTY)) this.camTY = desiredCamY;
+    else this.camTY += (desiredCamY - this.camTY) * this.camLerp;
+
+    this.worldRoot.position.set(this.camTX, this.camTY);
 
     this.drawRails(lo, hi);
     this.drawVoidBand(lo, hi);
@@ -167,47 +173,52 @@ export class TowerWorldView {
 
   private drawRails(lo: number, hi: number): void {
     this.railG.clear();
-    const x0 = tileWorldCenter(lo, "left").x - TILE_GAP / 2 - BRIDGE_MARGIN;
-    const x1 = tileWorldCenter(hi, "left").x + TILE_GAP / 2 + BRIDGE_MARGIN;
-    const yU = LANE_UPPER_Y + GLASS_HALF_H + 64;
-    const yL = LANE_LOWER_Y - GLASS_HALF_H - 62;
-    this.railG.moveTo(x0, yU).lineTo(x1, yU).stroke({ width: 3.4, color: 0xb8d4ff, alpha: 0.22 });
-    this.railG.moveTo(x0, yL).lineTo(x1, yL).stroke({ width: 3.4, color: 0xd4b8e8, alpha: 0.2 });
-    for (let c = lo; c <= hi; c += Math.max(5, Math.floor((hi - lo) / 12))) {
-      const x = choiceColumnWorldX(c);
-      this.railG.moveTo(x, yU + 14).lineTo(x, yL - 14).stroke({ width: 1.1, color: 0xffffff, alpha: 0.05 });
+    const yTop = floorWorldY(hi) - TILE_VERTICAL_GAP * 0.55 - BRIDGE_MARGIN * 0.2;
+    const yBot = floorWorldY(lo) + TILE_VERTICAL_GAP * 0.55 + ISO_TOP_HV + GLASS_HALF_H + 80;
+    const xl = -LANE_OFFSET_X;
+    const xr = LANE_OFFSET_X;
+
+    this.railG.moveTo(xl, yTop).lineTo(xl, yBot).stroke({ width: 3.2, color: 0xb8d4ff, alpha: 0.26 });
+    this.railG.moveTo(xr, yTop).lineTo(xr, yBot).stroke({ width: 3.2, color: 0xd4b8e8, alpha: 0.24 });
+
+    const step = Math.max(4, Math.floor((hi - lo) / 14));
+    for (let f = lo; f <= hi; f += step) {
+      const y = floorWorldY(f);
+      this.railG.moveTo(xl - 12, y).lineTo(xr + 12, y).stroke({ width: 1.05, color: 0xffffff, alpha: 0.06 });
     }
   }
 
   private drawVoidBand(lo: number, hi: number): void {
     this.laneG.clear();
-    const xL = tileWorldCenter(lo, "left").x - TILE_GAP / 2 - BRIDGE_MARGIN;
-    const span = tileWorldCenter(hi, "left").x - tileWorldCenter(lo, "left").x + TILE_GAP + BRIDGE_MARGIN * 2;
-    const topPad = GLASS_HALF_H + 104;
+    const yTop = floorWorldY(hi) - TILE_VERTICAL_GAP - 60;
+    const yBot = floorWorldY(lo) + TILE_VERTICAL_GAP + GLASS_HALF_H + 120;
+    const innerL = -LANE_OFFSET_X + ISO_TOP_HW * 0.35;
+    const innerR = LANE_OFFSET_X - ISO_TOP_HW * 0.35;
     this.laneG
-      .rect(xL - 30, LANE_UPPER_Y + topPad, span + 60, LANE_LOWER_Y - LANE_UPPER_Y - topPad * 2)
-      .fill({ color: 0x03060c, alpha: 0.4 })
-      .stroke({ width: 1, color: 0xffffff, alpha: 0.04 });
+      .rect(innerL, yTop, innerR - innerL, yBot - yTop)
+      .fill({ color: 0x050910, alpha: 0.48 })
+      .stroke({ width: 1, color: 0xffffff, alpha: 0.05 });
   }
 
-  /** 다음 열(+X 전진) 방향 표시 — 상·하 레인 공통 */
+  /** 위쪽(+전진) 방향 표시 */
   private drawForwardCue(g: Graphics, cx: number, cy: number, alpha: number): void {
-    const ex = cx + ISO_TOP_HW + 48;
-    g.moveTo(ex - 34, cy - 24)
-      .lineTo(ex + 36, cy)
-      .lineTo(ex - 34, cy + 24)
+    const tipY = cy - ISO_TOP_HV - 52;
+    const baseY = cy - ISO_TOP_HV - 14;
+    g.moveTo(cx - 28, baseY)
+      .lineTo(cx, tipY)
+      .lineTo(cx + 28, baseY)
       .closePath()
       .stroke({ width: 2.4, color: 0xfffde6, alpha });
-    g.moveTo(ex - 34, cy - 24)
-      .lineTo(ex + 36, cy)
-      .lineTo(ex - 34, cy + 24)
+    g.moveTo(cx - 28, baseY)
+      .lineTo(cx, tipY)
+      .lineTo(cx + 28, baseY)
       .closePath()
-      .fill({ color: 0xffffff, alpha: alpha * 0.16 });
+      .fill({ color: 0xffffff, alpha: alpha * 0.14 });
   }
 
   private drawColumns(inp: TowerSyncInput, lo: number, hi: number, pulse: number, perf: number): void {
     this.paneG.clear();
-    const gw = ISO_TOP_HW * 2.2;
+    const gw = ISO_TOP_HW * 2.4;
     const glowPick = (kk: string): boolean =>
       !inp.hasWon && inp.pickGlowKeys.includes(kk);
 
@@ -219,7 +230,7 @@ export class TowerWorldView {
         const broken = this.broken.has(kk);
         const shineBase = glowPick(kk) ? 0.48 + pulse * 0.52 : 0;
 
-        drawBridgeIsoBlock(this.paneG, loc.x, loc.y, {
+        drawBridgeVerticalBlock(this.paneG, loc.x, loc.y, {
           fog,
           broken,
           lane,
@@ -227,7 +238,13 @@ export class TowerWorldView {
         });
 
         if (broken) {
-          drawSideGlassShards(this.paneG, loc.x, loc.y + ISO_TOP_HV * 0.55, gw, c * 19 + (lane === "right" ? 91 : 0));
+          drawSideGlassShards(
+            this.paneG,
+            loc.x,
+            loc.y + ISO_TOP_HV * 0.45 + 18,
+            gw,
+            c * 19 + (lane === "right" ? 91 : 0)
+          );
         }
 
         if (shineBase && !broken) {
@@ -246,27 +263,33 @@ export class TowerWorldView {
 
   private drawGoal(lo: number, hi: number): void {
     if (CLIENT_GOAL_FLOOR < lo || CLIENT_GOAL_FLOOR > hi) return;
-    const ux = choiceColumnWorldX(CLIENT_GOAL_FLOOR);
-    const yP = Math.min(LANE_UPPER_Y - 154, -210);
+    const gy = floorWorldY(CLIENT_GOAL_FLOOR);
+    const span = LANE_OFFSET_X * 2 + ISO_TOP_HW * 2 + 36;
+    const x0 = -span / 2;
+    const bannerY = gy - ISO_TOP_HV - 100;
     this.paneG
-      .moveTo(ux + 48, yP + 38)
-      .lineTo(ux - 42, yP - 8)
-      .lineTo(ux + 148, yP + 22)
+      .moveTo(x0, bannerY + 44)
+      .lineTo(x0 + span, bannerY + 44)
+      .lineTo(x0 + span - 18, bannerY)
+      .lineTo(x0 + 18, bannerY)
       .closePath()
-      .fill({ color: 0xffde66, alpha: 0.82 });
-    this.paneG.moveTo(ux + 48, yP + 34).lineTo(ux + 52, LANE_UPPER_Y + 110).stroke({ width: 1.6, color: 0xffffff, alpha: 0.35 });
+      .fill({ color: 0xffde66, alpha: 0.88 });
+    this.paneG
+      .moveTo(0, bannerY + 42)
+      .lineTo(0, gy - ISO_TOP_HV - 12)
+      .stroke({ width: 1.8, color: 0xffffff, alpha: 0.38 });
   }
 
   private drawHintFlares(rows: HintFlash[], serverNow: number): void {
     this.hintGfx.clear();
-    const bw = ISO_TOP_HW * 2 + 56;
-    const bh = ISO_TOP_HV * 2 + 72;
+    const bw = ISO_TOP_HW * 2 + 52;
+    const bh = ISO_TOP_HV * 2 + 88;
     for (const h of rows) {
       if (serverNow >= h.expiresAt) continue;
       const pulse = Math.min(1.2, Math.max(0, (h.expiresAt - serverNow) / 1000));
       const p = tileWorldCenter(h.floor, h.safeSide);
       this.hintGfx
-        .roundRect(p.x - bw / 2, p.y - bh / 2 + 12, bw, bh, 16)
+        .roundRect(p.x - bw / 2, p.y - bh / 2 + 8, bw, bh, 16)
         .stroke({ width: 3.5 + pulse, color: 0xfff8b0, alpha: 0.28 + pulse * 0.5 });
     }
   }
@@ -280,7 +303,7 @@ export class TowerWorldView {
       const p = tileWorldCenter(h.floor, h.safeSide);
       const nn = h.nickname.length > 14 ? `${h.nickname.slice(0, 13)}…` : h.nickname;
       lbl.text = `${nn} · ⚡안전패널 노출중`;
-      lbl.position.set(p.x, p.y - ISO_TOP_HV - 108);
+      lbl.position.set(p.x, p.y - ISO_TOP_HV - 118);
       lbl.visible = true;
     }
     for (; i < this.hintTexts.length; i++) this.hintTexts[i].visible = false;
@@ -310,7 +333,7 @@ export class TowerWorldView {
       const slot = this.slots[si++];
       slot.root.visible = true;
       slot.root.position.set(x, y);
-      slot.root.zIndex = 5000;
+      slot.root.zIndex = 500000;
       slot.body.clear().ellipse(0, 6, 12, 8).fill({ color: 0xff7788, alpha: 0.55 });
       slot.label.text = `${g.name.length > 14 ? `${g.name.slice(0, 13)}…` : g.name}\n· 추락`;
       slot.label.style.fontSize = 14;
@@ -330,7 +353,7 @@ export class TowerWorldView {
 
     const keysSorted = [...buckets.keys()].sort((a, b) => Number(a.split("|")[0]) - Number(b.split("|")[0]));
     const nickLine = 17;
-    const bodyLiftPerStack = 5;
+    const bodyLiftPerStack = 6;
 
     for (const key of keysSorted) {
       const arr = buckets.get(key)!;
@@ -350,7 +373,7 @@ export class TowerWorldView {
 
         slot.root.visible = true;
         slot.root.position.set(avBase.x, avBase.y - lift);
-        slot.root.zIndex = row * 100 + ix;
+        slot.root.zIndex = -row * 800 + ix;
 
         slot.body.position.set(0, 0);
         const self = pl.id === inp.selfId;

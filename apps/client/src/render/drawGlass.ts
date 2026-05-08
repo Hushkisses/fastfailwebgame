@@ -1,9 +1,8 @@
 import { Graphics } from "pixi.js";
 import {
-  ISO_EXT_FRONT_X,
-  ISO_EXT_FRONT_Y,
-  ISO_EXT_SIDE_X,
-  ISO_EXT_SIDE_Y,
+  ISO_FRONT_DEPTH,
+  ISO_SIDE_DEPTH_X,
+  ISO_SIDE_DEPTH_Y,
   ISO_TOP_HW,
   ISO_TOP_HV,
   type ScrollSide
@@ -14,6 +13,9 @@ const BRIDGE_TOP_BASE = 0x4488ff;
 const BRIDGE_SIDE_BASE = 0x224488;
 const BRIDGE_FRONT_BASE = 0x112244;
 const LANE_PINK = 0xff99cc;
+
+/** ClimbStage 픽 박스 호환 */
+export const ISO_EXT_FRONT_Y = ISO_FRONT_DEPTH;
 
 function mixRgb(a: number, b: number, t: number): number {
   if (t <= 0) return a;
@@ -46,9 +48,10 @@ function fillQuad(
 }
 
 /**
- * 유리 다리 타일 — 상단 마름모 + 좌측 옆면 + 우전방 앞면 (좌→우 원근).
+ * 하단 시점 입체 블록: 윗면(발판) → 좌우 얇은 옆면 → 두꺼운 앞면(유저 시선).
+ * (+Y는 화면 아래 = 카메라 쪽)
  */
-export function drawBridgeIsoBlock(
+export function drawBridgeVerticalBlock(
   g: Graphics,
   cx: number,
   cy: number,
@@ -83,13 +86,29 @@ export function drawBridgeIsoBlock(
   const lx = cx - hw;
   const ly = cy;
 
-  const sdx = ISO_EXT_SIDE_X;
-  const sdy = ISO_EXT_SIDE_Y;
-  const fdx = ISO_EXT_FRONT_X;
-  const fdy = ISO_EXT_FRONT_Y;
+  const sdx = ISO_SIDE_DEPTH_X;
+  const sdy = ISO_SIDE_DEPTH_Y;
+  const D = ISO_FRONT_DEPTH;
 
-  fillQuad(g, bx, by, lx, ly, lx + sdx, ly + sdy, bx + sdx, by + sdy, { color: sideC, alpha: 1 });
-  fillQuad(g, rx, ry, bx, by, bx + fdx, by + fdy, rx + fdx, ry + fdy, { color: frontC, alpha: 1 });
+  fillQuad(g, lx, ly, tx, ty, tx - sdx, ty + sdy, lx - sdx * 0.85, ly + sdy * 0.92, { color: sideC, alpha: 1 });
+  fillQuad(g, tx, ty, rx, ry, rx + sdx * 0.85, ry + sdy * 0.92, tx + sdx, ty + sdy, { color: sideC, alpha: 1 });
+
+  const fwTop = hw + 10;
+  const fwBot = hw * 0.72;
+  const fy0 = by - 4;
+  const fy1 = by + D;
+  fillQuad(
+    g,
+    cx - fwTop,
+    fy0,
+    cx + fwTop,
+    fy0,
+    cx + fwBot,
+    fy1,
+    cx - fwBot,
+    fy1,
+    { color: frontC, alpha: 1 }
+  );
 
   const topAlpha = broken ? 0.42 : Math.min(0.92, 0.6 + glow * 0.32);
   g.moveTo(tx, ty)
@@ -104,6 +123,9 @@ export function drawBridgeIsoBlock(
       alpha: broken ? 0.12 : 0.14 + glow * 0.52
     });
 }
+
+/** @deprecated 호환용 — 세로 블록 사용 */
+export const drawBridgeIsoBlock = drawBridgeVerticalBlock;
 
 /** 이전 메인 화면용 큐브 (픽존 UI 보조). */
 export function drawIsoGlassPane(

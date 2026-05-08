@@ -3,54 +3,61 @@ import { blendFogColor } from "./towerLayout";
 
 export type ScrollSide = "left" | "right";
 
-/** 판정 열(서버 floor) 간격 — 타일끼리 띄움 */
-export const TILE_GAP = 150;
+/** 화면 중앙 기준 좌·우 레인 X 오프셋 (두 줄 다리) */
+export const LANE_OFFSET_X = 96;
+
+/**
+ * 층 간 세로 간격(월드). 값이 클수록 타일이 더 뜨고 낙하 깊이감이 커짐.
+ */
+export const TILE_VERTICAL_GAP = 138;
+
+/** 레일·보이드 여백 */
 export const BRIDGE_MARGIN = 140;
 
-/** 화면 세로 중앙(월드 y=0) 기준 상(L)·하(R) 레인 */
-export const LANE_UPPER_Y = -100;
-export const LANE_LOWER_Y = 100;
+/** 입체 타일 — 윗면(발판) 마름모 반가로 */
+export const ISO_TOP_HW = 42;
+/** 입체 타일 — 윗면 마름모 반세로 (화면 위쪽이 등 뒤) */
+export const ISO_TOP_HV = 18;
 
-/** 입체 타일 윗면 마름모 — 중심에서 좌우 반폭 */
-export const ISO_TOP_HW = 38;
-/** 입체 타일 윗면 마름모 — 중심에서 위·아래 반높이 */
-export const ISO_TOP_HV = 24;
+/** 유저를 향하는 앞면 두께 (+Y 방향, 화면 아래로) */
+export const ISO_FRONT_DEPTH = 46;
 
-/** 옆면: 바닥 꼭짓점에서 좌하 방향 변위 */
-export const ISO_EXT_SIDE_X = -11;
-export const ISO_EXT_SIDE_Y = 20;
-/** 앞면: 바닥 꼭짓점에서 우하 방향 변위 */
-export const ISO_EXT_FRONT_X = 15;
-export const ISO_EXT_FRONT_Y = 20;
+/** 좌우 얇은 옆면 깊이 보정 */
+export const ISO_SIDE_DEPTH_X = 12;
+export const ISO_SIDE_DEPTH_Y = 22;
 
-/** 픽/히트·레일 여백 추정용 (구 유리 판 반치수 자리) */
-export const GLASS_HALF_W = ISO_TOP_HW;
-export const GLASS_HALF_H = ISO_TOP_HV + Math.max(ISO_EXT_SIDE_Y, ISO_EXT_FRONT_Y);
+/** 픽/히트 영역 추정 */
+export const GLASS_HALF_W = ISO_TOP_HW + 6;
+export const GLASS_HALF_H = ISO_TOP_HV + ISO_FRONT_DEPTH;
 
-/** 픽/깨짐 등: 서버 floor 열의 정면 중심 (두 레인 동일 x) */
-export function tileWorldCenter(column: number, side: ScrollSide): { x: number; y: number } {
-  const x = Math.max(1, column) * TILE_GAP;
-  const y = side === "left" ? LANE_UPPER_Y : LANE_LOWER_Y;
-  return { x, y };
+/** 하위 호환: 예전 가로 간격 필드명 → 세로 간격 */
+export const TILE_GAP = TILE_VERTICAL_GAP;
+
+/** 낙하 연출 목표(심연 방향). floor 1보다 화면 아래(+Y)로 충분히 */
+export const ABYSS_EXTRA_Y = 280;
+
+export function floorWorldY(floor: number): number {
+  return -(Math.max(1, floor) - 1) * TILE_VERTICAL_GAP;
 }
 
-/** 선택지 열의 월드 x (동일) */
-export function choiceColumnWorldX(serverFloor: number): number {
-  return Math.max(1, serverFloor) * TILE_GAP;
+/** 픽/깨짐: 해당 층·레인 타일 윗면 중심 */
+export function tileWorldCenter(floor: number, side: ScrollSide): { x: number; y: number } {
+  const x = side === "left" ? -LANE_OFFSET_X : LANE_OFFSET_X;
+  return { x, y: floorWorldY(floor) };
 }
 
-/** 타일 윗면 기하학적 중심 — 캐릭터 앵커 */
+/** 타일 윗면 중심 — 캐릭터 앵커 */
 export function avatarWorldPos(floor: number, side: ScrollSide): { x: number; y: number } {
   return tileWorldCenter(floor, side);
 }
 
 export function fallTargetStartWorld(): { x: number; y: number } {
-  return { x: -Math.floor(TILE_GAP * 0.55), y: 0 };
+  return { x: 0, y: floorWorldY(1) + ABYSS_EXTRA_Y };
 }
 
-export function visibleColumnBand(centerRow: number): { lo: number; hi: number } {
-  const lo = Math.max(1, Math.floor(centerRow - TOWER_CULL_RADIUS_FLOORS));
-  const hi = Math.min(CLIENT_GOAL_FLOOR, Math.ceil(centerRow + TOWER_CULL_RADIUS_FLOORS));
+export function visibleColumnBand(centerFloor: number): { lo: number; hi: number } {
+  const lo = Math.max(1, Math.floor(centerFloor - TOWER_CULL_RADIUS_FLOORS));
+  const hi = Math.min(CLIENT_GOAL_FLOOR, Math.ceil(centerFloor + TOWER_CULL_RADIUS_FLOORS));
   return { lo, hi };
 }
 

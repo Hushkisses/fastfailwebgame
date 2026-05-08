@@ -2,7 +2,7 @@ import { Application, Container, Graphics, Text } from "pixi.js";
 import { CLIENT_GOAL_FLOOR } from "../config/climbConfig";
 import type { PickTarget, Side } from "../logic/pickPath";
 import { drawSideGlassSlab } from "./drawGlass";
-import { ISO_EXT_FRONT_Y, ISO_TOP_HW, ISO_TOP_HV, tileWorldCenter } from "./sidescrollLayout";
+import { ISO_FRONT_DEPTH, ISO_TOP_HW, ISO_TOP_HV, tileWorldCenter } from "./sidescrollLayout";
 import { TowerWorldView, type TowerSyncInput } from "./TowerWorldView";
 
 export type { GhostPlayerMini, TowerSyncInput } from "./TowerWorldView";
@@ -168,7 +168,7 @@ export class ClimbStage {
     for (let i = 0; i < this.activePickCount; i++) {
       const g = this.pickSlots[i]!;
       const hitW = ISO_TOP_HW * 2 + 36;
-      const hitH = ISO_TOP_HV * 2 + ISO_EXT_FRONT_Y + 32;
+      const hitH = ISO_TOP_HV * 2 + ISO_FRONT_DEPTH + 32;
       g.clear();
       g.roundRect(-hitW / 2, -ISO_TOP_HV - 14, hitW, hitH, 14).fill({ color: 0xffffff, alpha: 0.03 });
       g.roundRect(-hitW / 2 - 4 - wobble * 2, -ISO_TOP_HV - 18 - wobble * 2, hitW + 8 + wobble * 4, hitH + 12 + wobble * 4, 16).stroke({
@@ -188,7 +188,7 @@ export class ClimbStage {
     const alpha = 0.22 + wobble * 0.45;
     const expand = 4 + wobble * 6;
     const rw = ISO_TOP_HW * 2 + 20;
-    const rh = ISO_TOP_HV * 2 + ISO_EXT_FRONT_Y + 24;
+    const rh = ISO_TOP_HV * 2 + ISO_FRONT_DEPTH + 24;
     g.roundRect(-rw / 2 - expand, -rh / 2 - expand - 6, rw + expand * 2, rh + expand * 2, 14).stroke({
       width: 2.4,
       color: 0xffffff,
