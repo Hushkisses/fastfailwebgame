@@ -1,0 +1,17 @@
+# 환경변수는 deploy/caddy.env 에서 읽습니다 (deploy/run-caddy.ps1 로 실행).
+# 수동 실행 시: PowerShell에서 GAME_WEB_HOST 등을 설정한 뒤
+#   caddy run --config deploy/Caddyfile
+
+{$GAME_WEB_HOST} {
+	# GAME_DIST_ROOT에 공백이 있으면 따옴표 없으면 파싱 오류(too many arguments)
+	root * "{$GAME_DIST_ROOT}"
+	encode gzip
+	route {
+		try_files {path} {path}/ /index.html
+		file_server
+	}
+}
+
+{$GAME_API_HOST} {
+	reverse_proxy localhost:2567
+}

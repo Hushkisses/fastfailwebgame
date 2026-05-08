@@ -1,0 +1,24 @@
+매번 (서버 다시 켤 때)
+게임 서버(Colyseus)
+프로젝트 루트에서:
+
+npm run dev
+(또는 프로덕션으로 돌린다면 그에 맞는 npm start 등)
+
+Caddy(정적 파일 + api... 역프록시)
+관리자 PowerShell 권장, 프로젝트 루트에서:
+
+cd "C:\Users\Segwon\Desktop\창미기 테스트"
+.\deploy\run-caddy.ps1
+실행한 창은 닫지 말고 그대로 둠.
+
+순서는 게임 서버 먼저 켠 뒤 Caddy여도 되고, 거의 동시여도 되지만, 접속 테스트 전에는 둘 다 떠 있어야 합니다.
+
+가끔만 (변경했을 때)
+클라 코드·API 도메인·GAME_API_HOST를 바꿨을 때만 클라 재빌드:
+.\deploy\build-client-prod.ps1 -ApiWssUrl "wss://api.paldarmgi.p-e.kr"
+(실제 값은 지금 쓰는 API 호스트에 맞게)
+
+
+
+다른 커멘드 열고 npm run loadtest

@@ -1,0 +1,19 @@
+{
+  "name": "failure-growth-game",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/server",
+    "apps/client",
+    "apps/loadtest"
+  ],
+  "scripts": {
+    "loadtest": "npm run loadtest -w @game/loadtest --",
+    "dev": "npm run dev --workspace @game/server",
+    "dev:server": "npm run dev --workspace @game/server",
+    "dev:client": "npm run dev --workspace @game/client",
+    "build": "npm run build --workspaces",
+    "build:prod": "npm run build --workspace @game/client",
+    "test": "npm run test --workspace @game/server"
+  }
+}

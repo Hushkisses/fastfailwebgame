@@ -1,0 +1,9 @@
+node_modules
+dist
+.DS_Store
+coverage
+*.log
+
+# 프로덕션 비밀·로컬 배포 설정
+apps/client/.env.production
+deploy/caddy.env
