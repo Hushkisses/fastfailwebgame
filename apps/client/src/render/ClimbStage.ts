@@ -2,7 +2,7 @@ import { Application, Container, Graphics, Text } from "pixi.js";
 import { CLIENT_GOAL_FLOOR } from "../config/climbConfig";
 import type { PickTarget, Side } from "../logic/pickPath";
 import { drawSideGlassSlab } from "./drawGlass";
-import { tileWorldCenter } from "./sidescrollLayout";
+import { ISO_EXT_FRONT_Y, ISO_TOP_HW, ISO_TOP_HV, tileWorldCenter } from "./sidescrollLayout";
 import { TowerWorldView, type TowerSyncInput } from "./TowerWorldView";
 
 export type { GhostPlayerMini, TowerSyncInput } from "./TowerWorldView";
@@ -167,9 +167,11 @@ export class ClimbStage {
     const alpha = 0.2 + wobble * 0.42;
     for (let i = 0; i < this.activePickCount; i++) {
       const g = this.pickSlots[i]!;
+      const hitW = ISO_TOP_HW * 2 + 36;
+      const hitH = ISO_TOP_HV * 2 + ISO_EXT_FRONT_Y + 32;
       g.clear();
-      g.roundRect(-38, -78, 76, 156, 14).fill({ color: 0xffffff, alpha: 0.03 });
-      g.roundRect(-42 - wobble * 2, -82 - wobble * 2, 84 + wobble * 4, 164 + wobble * 4, 16).stroke({
+      g.roundRect(-hitW / 2, -ISO_TOP_HV - 14, hitW, hitH, 14).fill({ color: 0xffffff, alpha: 0.03 });
+      g.roundRect(-hitW / 2 - 4 - wobble * 2, -ISO_TOP_HV - 18 - wobble * 2, hitW + 8 + wobble * 4, hitH + 12 + wobble * 4, 16).stroke({
         width: 2.2,
         color: 0xfff8e8,
         alpha
@@ -185,9 +187,9 @@ export class ClimbStage {
     const wobble = (Math.sin(this.pulsePhase) + 1) * 0.5;
     const alpha = 0.22 + wobble * 0.45;
     const expand = 4 + wobble * 6;
-    const rw = 66;
-    const rh = 134;
-    g.roundRect(-rw / 2 - expand, -rh / 2 - expand, rw + expand * 2, rh + expand * 2, 14).stroke({
+    const rw = ISO_TOP_HW * 2 + 20;
+    const rh = ISO_TOP_HV * 2 + ISO_EXT_FRONT_Y + 24;
+    g.roundRect(-rw / 2 - expand, -rh / 2 - expand - 6, rw + expand * 2, rh + expand * 2, 14).stroke({
       width: 2.4,
       color: 0xffffff,
       alpha

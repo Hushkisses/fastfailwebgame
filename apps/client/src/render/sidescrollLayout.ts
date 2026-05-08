@@ -3,16 +3,29 @@ import { blendFogColor } from "./towerLayout";
 
 export type ScrollSide = "left" | "right";
 
-/** 판정 열(서버 floor) 간격 — 100px 초과, 직교 X만 사용 */
-export const TILE_GAP = 118;
+/** 판정 열(서버 floor) 간격 — 타일끼리 띄움 */
+export const TILE_GAP = 150;
 export const BRIDGE_MARGIN = 140;
 
-/** 화면 세로 중앙(월드 y=0) 기준 상·하 레인 — 완전 수평 */
-export const LANE_UPPER_Y = -122;
-export const LANE_LOWER_Y = 122;
+/** 화면 세로 중앙(월드 y=0) 기준 상(L)·하(R) 레인 */
+export const LANE_UPPER_Y = -100;
+export const LANE_LOWER_Y = 100;
 
-export const GLASS_HALF_W = 40;
-export const GLASS_HALF_H = 78;
+/** 입체 타일 윗면 마름모 — 중심에서 좌우 반폭 */
+export const ISO_TOP_HW = 38;
+/** 입체 타일 윗면 마름모 — 중심에서 위·아래 반높이 */
+export const ISO_TOP_HV = 24;
+
+/** 옆면: 바닥 꼭짓점에서 좌하 방향 변위 */
+export const ISO_EXT_SIDE_X = -11;
+export const ISO_EXT_SIDE_Y = 20;
+/** 앞면: 바닥 꼭짓점에서 우하 방향 변위 */
+export const ISO_EXT_FRONT_X = 15;
+export const ISO_EXT_FRONT_Y = 20;
+
+/** 픽/히트·레일 여백 추정용 (구 유리 판 반치수 자리) */
+export const GLASS_HALF_W = ISO_TOP_HW;
+export const GLASS_HALF_H = ISO_TOP_HV + Math.max(ISO_EXT_SIDE_Y, ISO_EXT_FRONT_Y);
 
 /** 픽/깨짐 등: 서버 floor 열의 정면 중심 (두 레인 동일 x) */
 export function tileWorldCenter(column: number, side: ScrollSide): { x: number; y: number } {
@@ -26,17 +39,9 @@ export function choiceColumnWorldX(serverFloor: number): number {
   return Math.max(1, serverFloor) * TILE_GAP;
 }
 
-/**
- * 캐릭터 배치: 선택 열의 **왼쪽**(뒤쪽) x, **타일 상단** y — 유리 색이 가려지지 않음.
- */
-const AVATAR_BACK = 78;
-
+/** 타일 윗면 기하학적 중심 — 캐릭터 앵커 */
 export function avatarWorldPos(floor: number, side: ScrollSide): { x: number; y: number } {
-  const tc = tileWorldCenter(floor, side);
-  let x = tc.x - AVATAR_BACK;
-  if (floor <= 1) x = Math.min(tc.x - AVATAR_BACK, TILE_GAP * 0.38);
-  const yTop = tc.y - GLASS_HALF_H - 10;
-  return { x, y: yTop };
+  return tileWorldCenter(floor, side);
 }
 
 export function fallTargetStartWorld(): { x: number; y: number } {

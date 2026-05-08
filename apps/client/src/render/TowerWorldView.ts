@@ -2,18 +2,18 @@ import { Application, Container, Graphics, Text } from "pixi.js";
 import { CLIENT_GOAL_FLOOR } from "../config/climbConfig";
 import type { HintFlash } from "../hint/collectHints";
 import type { PickTarget } from "../logic/pickPath";
-import { drawCrackBurst, drawSideGlassShards, drawSideGlassSlab } from "./drawGlass";
+import { drawBridgeIsoBlock, drawCrackBurst, drawSideGlassShards } from "./drawGlass";
 import {
   BRIDGE_MARGIN,
   GLASS_HALF_H,
-  GLASS_HALF_W,
+  ISO_TOP_HW,
+  ISO_TOP_HV,
   LANE_LOWER_Y,
   LANE_UPPER_Y,
   avatarWorldPos,
   choiceColumnWorldX,
   columnFog,
   fallTargetStartWorld,
-  mutedLaneColor,
   tileWorldCenter,
   TILE_GAP,
   visibleColumnBand,
@@ -87,10 +87,15 @@ export class TowerWorldView {
       const body = new Graphics();
       const label = new Text({
         text: "",
-        style: { fill: 0xfff7ff, fontSize: 10, fontWeight: "600", stroke: { color: 0x080c14, width: 4 } }
+        style: {
+          fill: 0xffffff,
+          fontSize: 14,
+          fontWeight: "700",
+          stroke: { color: 0x0a1020, width: 3 }
+        }
       });
       label.anchor.set(0.5, 1);
-      label.position.set(0, -52);
+      label.position.set(0, -16);
       const root = new Container();
       root.eventMode = "none";
       root.addChild(body, label);
@@ -187,7 +192,7 @@ export class TowerWorldView {
 
   /** 다음 열(+X 전진) 방향 표시 — 상·하 레인 공통 */
   private drawForwardCue(g: Graphics, cx: number, cy: number, alpha: number): void {
-    const ex = cx + GLASS_HALF_W + 42;
+    const ex = cx + ISO_TOP_HW + 48;
     g.moveTo(ex - 34, cy - 24)
       .lineTo(ex + 36, cy)
       .lineTo(ex - 34, cy + 24)
@@ -202,8 +207,7 @@ export class TowerWorldView {
 
   private drawColumns(inp: TowerSyncInput, lo: number, hi: number, pulse: number, perf: number): void {
     this.paneG.clear();
-    const gw = GLASS_HALF_W * 2.14;
-    const gh = GLASS_HALF_H * 2.06;
+    const gw = ISO_TOP_HW * 2.2;
     const glowPick = (kk: string): boolean =>
       !inp.hasWon && inp.pickGlowKeys.includes(kk);
 
@@ -213,16 +217,17 @@ export class TowerWorldView {
         const kk = this.k(c, lane);
         const loc = tileWorldCenter(c, lane);
         const broken = this.broken.has(kk);
-        const tint = mutedLaneColor(lane, fog);
         const shineBase = glowPick(kk) ? 0.48 + pulse * 0.52 : 0;
 
+        drawBridgeIsoBlock(this.paneG, loc.x, loc.y, {
+          fog,
+          broken,
+          lane,
+          glow: shineBase ? shineBase : fog * 0.06
+        });
+
         if (broken) {
-          drawSideGlassSlab(this.paneG, loc.x, loc.y, gw * 0.74, gh * 0.8, 0x223449, { glow: 0 });
-          drawSideGlassShards(this.paneG, loc.x, loc.y + 6, gw, c * 19 + (lane === "right" ? 91 : 0));
-        } else {
-          drawSideGlassSlab(this.paneG, loc.x, loc.y, gw, gh, tint, {
-            glow: shineBase ? shineBase : fog * 0.05
-          });
+          drawSideGlassShards(this.paneG, loc.x, loc.y + ISO_TOP_HV * 0.55, gw, c * 19 + (lane === "right" ? 91 : 0));
         }
 
         if (shineBase && !broken) {
@@ -254,8 +259,8 @@ export class TowerWorldView {
 
   private drawHintFlares(rows: HintFlash[], serverNow: number): void {
     this.hintGfx.clear();
-    const bw = GLASS_HALF_W * 2 + 52;
-    const bh = GLASS_HALF_H * 2 + 44;
+    const bw = ISO_TOP_HW * 2 + 56;
+    const bh = ISO_TOP_HV * 2 + 72;
     for (const h of rows) {
       if (serverNow >= h.expiresAt) continue;
       const pulse = Math.min(1.2, Math.max(0, (h.expiresAt - serverNow) / 1000));
@@ -275,7 +280,7 @@ export class TowerWorldView {
       const p = tileWorldCenter(h.floor, h.safeSide);
       const nn = h.nickname.length > 14 ? `${h.nickname.slice(0, 13)}…` : h.nickname;
       lbl.text = `${nn} · ⚡안전패널 노출중`;
-      lbl.position.set(p.x, p.y - GLASS_HALF_H - 124);
+      lbl.position.set(p.x, p.y - ISO_TOP_HV - 108);
       lbl.visible = true;
     }
     for (; i < this.hintTexts.length; i++) this.hintTexts[i].visible = false;
@@ -307,9 +312,11 @@ export class TowerWorldView {
       slot.root.position.set(x, y);
       slot.root.zIndex = 5000;
       slot.body.clear().ellipse(0, 6, 12, 8).fill({ color: 0xff7788, alpha: 0.55 });
-      slot.label.text = `${g.name.length > 11 ? `${g.name.slice(0, 11)}…` : g.name}\n· 추락`;
-      slot.label.style.fill = 0xffd5ef;
-      slot.label.position.set(0, -42);
+      slot.label.text = `${g.name.length > 14 ? `${g.name.slice(0, 13)}…` : g.name}\n· 추락`;
+      slot.label.style.fontSize = 14;
+      slot.label.style.fontWeight = "700";
+      slot.label.style.fill = 0xfff0f8;
+      slot.label.position.set(0, -52);
       if (tRaw >= 1 - 1e-6) this.falls.delete(g.id);
     }
 
@@ -322,6 +329,9 @@ export class TowerWorldView {
     }
 
     const keysSorted = [...buckets.keys()].sort((a, b) => Number(a.split("|")[0]) - Number(b.split("|")[0]));
+    const nickLine = 17;
+    const bodyLiftPerStack = 5;
+
     for (const key of keysSorted) {
       const arr = buckets.get(key)!;
       arr.sort((a, b) => a.id.localeCompare(b.id));
@@ -331,30 +341,22 @@ export class TowerWorldView {
       if (row < lo - 22 || row > hi + 22) continue;
 
       const avBase = avatarWorldPos(row, side);
-      const n = Math.max(arr.length, 1);
-      const perRow = n <= 10 ? n : Math.min(10, Math.ceil(Math.sqrt(n * 1.15)));
-      const spacing = Math.max(16, Math.min(24, (TILE_GAP + 40) / (perRow + 1)));
-      const rowStep = n > 14 ? 22 : 18;
+      const n = arr.length;
 
       arr.forEach((pl, ix) => {
         if (si >= this.slots.length) return;
         const slot = this.slots[si++];
-        const gridRow = Math.floor(ix / perRow);
-        const colIx = ix % perRow;
-        const rowStart = gridRow * perRow;
-        const nThisRow = Math.min(perRow, n - rowStart);
-        const ox = (colIx - (nThisRow - 1) / 2) * spacing;
-        const oy = -gridRow * rowStep;
+        const lift = ix * bodyLiftPerStack;
 
         slot.root.visible = true;
-        slot.root.position.set(avBase.x + ox, avBase.y + oy);
-        slot.root.zIndex = row * 100 + gridRow * 10 + colIx;
+        slot.root.position.set(avBase.x, avBase.y - lift);
+        slot.root.zIndex = row * 100 + ix;
 
         slot.body.position.set(0, 0);
         const self = pl.id === inp.selfId;
-        const many = n > 20;
-        const rO = self ? (many ? 10 : 12) : many ? 5.5 : 8;
-        const rI = self ? (many ? 8 : 10) : many ? 4.5 : 7;
+        const many = n > 18;
+        const rO = self ? (many ? 9 : 11) : many ? 6 : 8;
+        const rI = self ? (many ? 7 : 9) : many ? 4.5 : 6.5;
         slot.body.clear().circle(0, 0, rO).stroke({
           width: self ? 3 : 1.5,
           color: self ? 0xfff188 : 0x9aceff,
@@ -366,13 +368,15 @@ export class TowerWorldView {
         });
 
         slot.label.anchor.set(0.5, 1);
-        const nmCap = self ? 16 : many ? 9 : 12;
-        const nm =
-          pl.name.length > nmCap ? `${pl.name.slice(0, nmCap - 1)}…` : pl.name;
-        slot.label.text = nm + (self ? " ⭐" : "");
-        slot.label.style.fill = self ? 0xfffaee : hintedUsers.has(pl.id) ? 0xfff2b8 : 0xf4fcff;
-        slot.label.style.fontSize = many ? 9 : 10;
-        slot.label.position.set(0, -22 - gridRow * 2);
+        const nmCap = 22;
+        const raw = pl.name.length > nmCap ? `${pl.name.slice(0, nmCap - 1)}…` : pl.name;
+        slot.label.text = raw + (self ? " ⭐" : "");
+        slot.label.style.fontSize = 14;
+        slot.label.style.fontWeight = "700";
+        const hinted = hintedUsers.has(pl.id);
+        slot.label.style.fill = self ? 0xfffce8 : hinted ? 0xfff2b8 : 0xffffff;
+        slot.label.style.stroke = { color: 0x0a1020, width: 3 };
+        slot.label.position.set(0, -14 - ix * nickLine);
       });
     }
 

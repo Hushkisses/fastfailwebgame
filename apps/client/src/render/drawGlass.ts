@@ -1,4 +1,109 @@
 import { Graphics } from "pixi.js";
+import {
+  ISO_EXT_FRONT_X,
+  ISO_EXT_FRONT_Y,
+  ISO_EXT_SIDE_X,
+  ISO_EXT_SIDE_Y,
+  ISO_TOP_HW,
+  ISO_TOP_HV,
+  type ScrollSide
+} from "./sidescrollLayout";
+import { blendFogColor } from "./towerLayout";
+
+const BRIDGE_TOP_BASE = 0x4488ff;
+const BRIDGE_SIDE_BASE = 0x224488;
+const BRIDGE_FRONT_BASE = 0x112244;
+const LANE_PINK = 0xff99cc;
+
+function mixRgb(a: number, b: number, t: number): number {
+  if (t <= 0) return a;
+  if (t >= 1) return b;
+  const ar = (a >> 16) & 255;
+  const ag = (a >> 8) & 255;
+  const ab = a & 255;
+  const br = (b >> 16) & 255;
+  const bg = (b >> 8) & 255;
+  const bb = b & 255;
+  const r = Math.floor(ar * (1 - t) + br * t);
+  const g = Math.floor(ag * (1 - t) + bg * t);
+  const bl = Math.floor(ab * (1 - t) + bb * t);
+  return (r << 16) | (g << 8) | bl;
+}
+
+function fillQuad(
+  g: Graphics,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+  dx: number,
+  dy: number,
+  fill: { color: number; alpha: number }
+): void {
+  g.moveTo(ax, ay).lineTo(bx, by).lineTo(cx, cy).lineTo(dx, dy).closePath().fill(fill);
+}
+
+/**
+ * 유리 다리 타일 — 상단 마름모 + 좌측 옆면 + 우전방 앞면 (좌→우 원근).
+ */
+export function drawBridgeIsoBlock(
+  g: Graphics,
+  cx: number,
+  cy: number,
+  opts: { fog: number; broken: boolean; glow: number; lane: ScrollSide }
+): void {
+  const { fog, broken, glow, lane } = opts;
+  const laneMix = lane === "right" ? 0.24 : 0;
+
+  let topC = mixRgb(BRIDGE_TOP_BASE, LANE_PINK, laneMix);
+  let sideC = mixRgb(BRIDGE_SIDE_BASE, LANE_PINK, laneMix * 0.55);
+  let frontC = mixRgb(BRIDGE_FRONT_BASE, LANE_PINK, laneMix * 0.45);
+
+  if (broken) {
+    const d = Math.min(1, fog + 0.38);
+    topC = blendFogColor(0x3a4a5c, d);
+    sideC = blendFogColor(0x243448, d);
+    frontC = blendFogColor(0x152030, d);
+  } else {
+    topC = blendFogColor(topC, fog);
+    sideC = blendFogColor(sideC, fog);
+    frontC = blendFogColor(frontC, fog);
+  }
+
+  const hw = ISO_TOP_HW;
+  const hv = ISO_TOP_HV;
+  const tx = cx;
+  const ty = cy - hv;
+  const rx = cx + hw;
+  const ry = cy;
+  const bx = cx;
+  const by = cy + hv;
+  const lx = cx - hw;
+  const ly = cy;
+
+  const sdx = ISO_EXT_SIDE_X;
+  const sdy = ISO_EXT_SIDE_Y;
+  const fdx = ISO_EXT_FRONT_X;
+  const fdy = ISO_EXT_FRONT_Y;
+
+  fillQuad(g, bx, by, lx, ly, lx + sdx, ly + sdy, bx + sdx, by + sdy, { color: sideC, alpha: 1 });
+  fillQuad(g, rx, ry, bx, by, bx + fdx, by + fdy, rx + fdx, ry + fdy, { color: frontC, alpha: 1 });
+
+  const topAlpha = broken ? 0.42 : Math.min(0.92, 0.6 + glow * 0.32);
+  g.moveTo(tx, ty)
+    .lineTo(rx, ry)
+    .lineTo(bx, by)
+    .lineTo(lx, ly)
+    .closePath()
+    .fill({ color: topC, alpha: topAlpha })
+    .stroke({
+      width: 1.15 + glow * 2.8,
+      color: 0xffffff,
+      alpha: broken ? 0.12 : 0.14 + glow * 0.52
+    });
+}
 
 /** 이전 메인 화면용 큐브 (픽존 UI 보조). */
 export function drawIsoGlassPane(
