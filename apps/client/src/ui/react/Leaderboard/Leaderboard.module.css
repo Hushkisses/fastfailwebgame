@@ -1,0 +1,47 @@
+.panel {
+  position: fixed;
+  right: 16px;
+  top: 16px;
+  padding: 10px 16px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0d1422;
+  font-family: system-ui, sans-serif;
+  border-radius: 12px;
+  border: 1px solid rgba(26, 143, 216, 0.5);
+  box-shadow: 0 6px 18px rgba(20, 40, 80, 0.18);
+  z-index: 30;
+  pointer-events: none;
+  min-width: 140px;
+  text-align: left;
+  backdrop-filter: blur(4px);
+}
+
+.label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  opacity: 0.95;
+  color: #1a8fd8;
+  margin-bottom: 4px;
+}
+
+.name {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0d1422;
+  letter-spacing: 0.02em;
+}
+
+.nameSelf {
+  composes: name;
+  color: #1a8fd8;
+}
+
+.floor {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.78;
+  color: #3a4458;
+  margin-top: 3px;
+}

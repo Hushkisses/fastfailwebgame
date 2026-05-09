@@ -1,0 +1,61 @@
+.panel {
+  position: fixed;
+  left: 12px;
+  top: 12px;
+  z-index: 40;
+  width: 268px;
+  box-sizing: border-box;
+  padding: 14px 16px 15px 18px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(26, 143, 216, 0.5);
+  border-left: 4px solid #1a8fd8;
+  box-shadow: 0 6px 18px rgba(20, 40, 80, 0.14);
+  font-family: system-ui, sans-serif;
+  color: #0d1422;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+.title {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  white-space: pre-line;
+}
+
+.energyLabel {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #2a3344;
+}
+
+.energyBar {
+  margin-top: 6px;
+  height: 11px;
+  border-radius: 999px;
+  background: #dde8f6;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-sizing: border-box;
+}
+
+.energyFill {
+  height: 100%;
+  border-radius: 999px;
+  background: #1a8fd8;
+  transition: width 120ms linear;
+}
+
+.status {
+  margin-top: 9px;
+  min-height: 16px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: #2a3344;
+  white-space: pre-line;
+}
