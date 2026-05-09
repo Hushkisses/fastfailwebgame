@@ -75,12 +75,18 @@ export class ClimbStage {
     });
     this.stats = new Text({
       text: "",
-      style: { fill: 0x6a7588, fontSize: 10, lineHeight: 14 }
+      style: {
+        fill: 0xd0dde8,
+        fontSize: 10,
+        fontWeight: "600",
+        lineHeight: 14,
+        stroke: { color: 0x000000, width: 4 }
+      }
     });
     this.title.position.set(16, 14);
     this.stats.position.set(16, 56);
-    this.title.alpha = 0.92;
-    this.stats.alpha = 0.45;
+    this.title.alpha = 0.96;
+    this.stats.alpha = 0.92;
 
     this.leftCap.anchor.set(0.5, 1.35);
     this.leftCap.position.set(0, -8);

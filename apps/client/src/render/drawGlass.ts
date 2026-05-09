@@ -10,11 +10,15 @@ import { blendFogColor } from "./towerLayout";
 /** ClimbStage 픽 박스 호환 */
 export const ISO_EXT_FRONT_Y = SLAB_LIP_DEPTH;
 
-/** Gunmetal / 콘크리트 베이스 */
-const TOP_METAL_L = 0x4a5568;
-const TOP_METAL_R = 0x585068;
-const LIP_DARK = 0x1e2329;
-const SIDE_DIM = 0x2a323c;
+/** 공중 콘크리트 슬래브 베이스 — 윗면(밝음) → 앞면(중간) → 옆면(가장 어둠) */
+const TOP_L = 0x5a6470;
+const TOP_R = 0x645a72;
+const FRONT_L = 0x363c46;
+const FRONT_R = 0x3a3640;
+const SIDE_L = 0x1f242c;
+const SIDE_R = 0x231f28;
+const EDGE_HI = 0x9aa6b6;
+const UNDER_SHADOW = 0x05080c;
 
 function mixRgb(a: number, b: number, t: number): number {
   if (t <= 0) return a;
@@ -47,8 +51,9 @@ function fillQuad(
 }
 
 /**
- * 공중 평판 슬래브 — **마름모/보석 형태 없음**.
- * 원근 사다리꼴 윗면 + 얇은 전면 립만 (실제 플랫폼).
+ * 공중 콘크리트 슬래브 — 두꺼운 3D 구조물.
+ * 윗면(평행사변형) + 앞면(두꺼운 벽) + 옆면(레인 안쪽 바라보는 측면).
+ * 어두운 공간에 떠 있는 실제 발판 느낌.
  */
 export function drawFloatingSlab(
   g: Graphics,
@@ -68,131 +73,196 @@ export function drawFloatingSlab(
   const sc = opts.scale ?? 1;
   const depthFade = opts.depthFade ?? 0;
   const laneT = lane === "right" ? 1 : 0;
+  /** 어느 쪽 옆면이 보이는지 — 플레이어(중앙) 쪽 면이 보이도록 */
+  const sideXSign = lane === "left" ? 1 : -1;
 
-  let topBase = mixRgb(TOP_METAL_L, TOP_METAL_R, laneT * 0.35);
-  let lipC = LIP_DARK;
-  let sideC = SIDE_DIM;
+  let topC = mixRgb(TOP_L, TOP_R, laneT);
+  let frontC = mixRgb(FRONT_L, FRONT_R, laneT);
+  let sideC = mixRgb(SIDE_L, SIDE_R, laneT);
+  let edgeHi = EDGE_HI;
 
   if (broken) {
     const d = Math.min(1, fog + 0.42);
-    topBase = blendFogColor(0x353d48, d);
-    lipC = blendFogColor(0x151820, d);
-    sideC = blendFogColor(0x202830, d);
+    topC = blendFogColor(0x3d4350, d);
+    frontC = blendFogColor(0x252a32, d);
+    sideC = blendFogColor(0x171b22, d);
+    edgeHi = blendFogColor(0x556070, d);
   } else {
-    topBase = blendFogColor(topBase, fog * 0.85);
-    lipC = blendFogColor(lipC, fog);
-    sideC = blendFogColor(sideC, fog);
+    topC = blendFogColor(topC, fog * 0.78);
+    frontC = blendFogColor(frontC, fog * 0.85);
+    sideC = blendFogColor(sideC, fog * 0.92);
+    edgeHi = blendFogColor(edgeHi, fog * 0.55);
   }
 
-  const hwNear = SLAB_HALF_WIDTH * sc;
-  const hwFar = hwNear * (0.5 + 0.08 * (1 - depthFade));
-  const yBack = cy - SLAB_TOP_THICK * sc * 0.85;
-  const yFront = cy + SLAB_TOP_THICK * sc * 0.95;
+  const hw = SLAB_HALF_WIDTH * sc;
+  const topH = SLAB_TOP_THICK * sc;
+  const lipH = SLAB_LIP_DEPTH * sc * Math.max(0.62, 1 - depthFade * 0.32);
 
-  const bodyA = Math.max(0.2, 1 - depthFade * 0.62);
-  const nearBright = (1 - depthFade * 0.55) * (neonPick ? 1.15 : 1);
+  /** 윗면의 앞·뒤 가장자리 (관측자 시점에서 약간 위에서 내려다봄) */
+  const yBack = cy - topH * 0.95;
+  const yTop = cy + topH * 1.05;
+  const yBot = yTop + lipH;
+
+  /** 등각 가로 시프트 — 뒷쪽 모서리가 플레이어 반대쪽으로 밀림 = 옆면 노출 */
+  const skewMag = topH * 1.55 * Math.max(0.45, 1 - depthFade * 0.4);
+  const skewX = sideXSign * skewMag;
+
+  /** 앞면 바닥의 약한 원근 수렴 */
+  const hwBot = hw * (0.97 - depthFade * 0.04);
+
+  const bodyA = Math.max(0.34, 1 - depthFade * 0.5);
+  const nearBright = (1 - depthFade * 0.5) * (neonPick ? 1.12 : 1);
 
   const topAlpha = broken
-    ? 0.36 * bodyA
-    : Math.max(0.08, (0.42 + glow * 0.22) * bodyA * nearBright);
+    ? 0.55 * bodyA
+    : Math.min(1.0, (0.95 + glow * 0.05) * bodyA * nearBright);
+  const frontAlpha = broken ? 0.5 * bodyA : Math.min(1.0, 0.97 * bodyA);
+  const sideAlpha = broken ? 0.46 * bodyA : Math.min(1.0, 0.94 * bodyA);
 
-  /** 윗면 — 넓은 사다리꼴 (멀리 가장자리 좁음 = 깊이) */
-  g.moveTo(cx - hwFar, yBack)
-    .lineTo(cx + hwFar, yBack)
-    .lineTo(cx + hwNear, yFront)
-    .lineTo(cx - hwNear, yFront)
+  /** 공중 부유감 — 슬래브 아래 어두운 그림자 타원 */
+  if (!broken) {
+    const shY = yBot + lipH * 0.36;
+    const shR = hw * (0.84 + 0.08 * (1 - depthFade));
+    g.ellipse(cx + skewX * 0.32, shY, shR, lipH * 0.16).fill({
+      color: 0x000000,
+      alpha: 0.3 * bodyA
+    });
+  }
+
+  /** ① 윗면 — 평행사변형 (등각: 뒷 모서리가 옆으로 밀림) */
+  g.moveTo(cx - hw, yTop)
+    .lineTo(cx + hw, yTop)
+    .lineTo(cx + hw + skewX, yBack)
+    .lineTo(cx - hw + skewX, yBack)
     .closePath()
-    .fill({ color: topBase, alpha: topAlpha });
+    .fill({ color: topC, alpha: topAlpha });
 
-  /** 전면 립 — 얇은 가로대만 (두께 얇게) */
-  const lip = SLAB_LIP_DEPTH * sc * Math.max(0.55, 1 - depthFade * 0.35);
-  const lipTop = yFront;
-  const lipBot = yFront + lip;
+  /** ② 옆면 — 플레이어(중앙)쪽 측벽 (가장 어둡게) */
+  const sx = sideXSign * hw;
+  const sxBot = sideXSign * hwBot;
+  g.moveTo(cx + sx, yTop)
+    .lineTo(cx + sx + skewX, yBack)
+    .lineTo(cx + sxBot + skewX * 0.92, yBack + lipH)
+    .lineTo(cx + sxBot, yBot)
+    .closePath()
+    .fill({ color: sideC, alpha: sideAlpha });
 
-  fillQuad(
-    g,
-    cx - hwNear,
-    lipTop,
-    cx + hwNear,
-    lipTop,
-    cx + hwNear * 0.92,
-    lipBot,
-    cx - hwNear * 0.92,
-    lipBot,
-    { color: lipC, alpha: bodyA * 0.95 }
-  );
+  /** ③ 앞면 — 두꺼운 콘크리트 벽 */
+  g.moveTo(cx - hw, yTop)
+    .lineTo(cx + hw, yTop)
+    .lineTo(cx + hwBot, yBot)
+    .lineTo(cx - hwBot, yBot)
+    .closePath()
+    .fill({ color: frontC, alpha: frontAlpha });
 
-  const edgeW = Math.max(5, 7 * sc);
-  fillQuad(
-    g,
-    cx - hwNear,
-    lipTop,
-    cx - hwNear + edgeW,
-    lipTop,
-    cx - hwNear + edgeW * 0.85,
-    lipBot,
-    cx - hwNear,
-    lipBot,
-    { color: sideC, alpha: bodyA * 0.5 }
-  );
-  fillQuad(
-    g,
-    cx + hwNear - edgeW,
-    lipTop,
-    cx + hwNear,
-    lipTop,
-    cx + hwNear,
-    lipBot,
-    cx + hwNear - edgeW * 0.85,
-    lipBot,
-    { color: sideC, alpha: bodyA * 0.5 }
-  );
+  /** 앞면 하단 어두운 그라데이션 — 두께·밀도감 */
+  if (!broken) {
+    const shH = lipH * 0.36;
+    fillQuad(
+      g,
+      cx - hwBot * 0.99,
+      yBot - shH,
+      cx + hwBot * 0.99,
+      yBot - shH,
+      cx + hwBot,
+      yBot,
+      cx - hwBot,
+      yBot,
+      { color: UNDER_SHADOW, alpha: 0.45 * bodyA }
+    );
+  }
 
-  /** 상단 하이라이트 라인 (금속 모서리) */
-  g.moveTo(cx - hwFar, yBack)
-    .lineTo(cx + hwFar, yBack)
+  /** 윗면 뒷 모서리 — 빛이 닿는 가장 밝은 캐치라인 */
+  g.moveTo(cx - hw + skewX, yBack)
+    .lineTo(cx + hw + skewX, yBack)
     .stroke({
-      width: Math.max(0.8, 1.2 * sc),
-      color: 0x8899aa,
-      alpha: Math.max(0.06, 0.14 * (1 - depthFade * 0.7)) * bodyA
+      width: Math.max(1.0, 1.6 * sc),
+      color: edgeHi,
+      alpha: Math.max(0.18, 0.42 * (1 - depthFade * 0.55)) * bodyA
     });
 
+  /** 윗면-앞면 경계 — 모서리 강조 (밟을 수 있는 가장자리) */
+  g.moveTo(cx - hw, yTop)
+    .lineTo(cx + hw, yTop)
+    .stroke({
+      width: Math.max(1.3, 2.0 * sc),
+      color: edgeHi,
+      alpha: Math.max(0.28, 0.62 * (1 - depthFade * 0.5)) * bodyA
+    });
+
+  /** 앞면 하단 — 깊은 그림자 라인 */
+  g.moveTo(cx - hwBot, yBot)
+    .lineTo(cx + hwBot, yBot)
+    .stroke({
+      width: Math.max(1.5, 2.4 * sc),
+      color: 0x000000,
+      alpha: 0.58 * bodyA
+    });
+
+  /** 옆면 바깥 모서리 — 측면 윤곽 */
+  g.moveTo(cx + sxBot, yBot)
+    .lineTo(cx + sxBot + skewX * 0.92, yBack + lipH)
+    .stroke({
+      width: Math.max(1.1, 1.6 * sc),
+      color: 0x000000,
+      alpha: 0.5 * bodyA
+    });
+  g.moveTo(cx + sx + skewX, yBack)
+    .lineTo(cx + sxBot + skewX * 0.92, yBack + lipH)
+    .stroke({
+      width: Math.max(0.9, 1.3 * sc),
+      color: 0x000000,
+      alpha: 0.4 * bodyA
+    });
+
+  /** 윗면 가장자리 — 레인 색 액센트 (얇은 색띠) */
   if (!broken && !neonPick) {
-    const edge = lane === "left" ? 0x335566 : 0x554466;
-    g.moveTo(cx - hwFar, yBack)
-      .lineTo(cx + hwFar, yBack)
-      .lineTo(cx + hwNear, yFront)
-      .lineTo(cx - hwNear, yFront)
-      .closePath()
+    const tint = lane === "left" ? 0x4a90b8 : 0x9a5a90;
+    g.moveTo(cx - hw, yTop)
+      .lineTo(cx + hw, yTop)
       .stroke({
-        width: Math.max(0.7, 1.0 * sc),
-        color: edge,
-        alpha: Math.max(0.05, 0.12 * (1 - depthFade * 0.55))
+        width: Math.max(0.6, 0.9 * sc),
+        color: tint,
+        alpha: Math.max(0.1, 0.22 * (1 - depthFade * 0.6))
       });
   }
 
+  /** 픽 가능 슬롯 — 네온 외곽선 + 헤일로 (3면 모두 강조) */
   if (neonPick && !broken) {
     const neon = lane === "left" ? 0x44ddff : 0xdd77ff;
-    g.moveTo(cx - hwFar, yBack)
-      .lineTo(cx + hwFar, yBack)
-      .lineTo(cx + hwNear, yFront)
-      .lineTo(cx - hwNear, yFront)
+
+    const haloW = (5.5 + glow * 5) * sc;
+    const haloA = 0.13 + glow * 0.18;
+    g.moveTo(cx - hw, yTop)
+      .lineTo(cx + hw, yTop)
+      .stroke({ width: haloW, color: neon, alpha: haloA });
+    g.moveTo(cx - hw + skewX, yBack)
+      .lineTo(cx + hw + skewX, yBack)
+      .stroke({ width: haloW * 0.78, color: neon, alpha: haloA * 0.78 });
+
+    const outW = (2.0 + glow * 2.0) * sc;
+    const outA = 0.42 + glow * 0.4;
+
+    g.moveTo(cx - hw, yTop)
+      .lineTo(cx + hw, yTop)
+      .lineTo(cx + hw + skewX, yBack)
+      .lineTo(cx - hw + skewX, yBack)
       .closePath()
-      .stroke({
-        width: (2.2 + glow * 2.8) * sc,
-        color: neon,
-        alpha: 0.35 + glow * 0.42
-      });
-    g.moveTo(cx - hwFar, yBack)
-      .lineTo(cx + hwFar, yBack)
-      .lineTo(cx + hwNear, yFront)
-      .lineTo(cx - hwNear, yFront)
+      .stroke({ width: outW, color: neon, alpha: outA });
+
+    g.moveTo(cx - hw, yTop)
+      .lineTo(cx + hw, yTop)
+      .lineTo(cx + hwBot, yBot)
+      .lineTo(cx - hwBot, yBot)
       .closePath()
-      .stroke({
-        width: (5 + glow * 4) * sc,
-        color: neon,
-        alpha: 0.1 + glow * 0.12
-      });
+      .stroke({ width: outW, color: neon, alpha: outA * 0.85 });
+
+    g.moveTo(cx + sx, yTop)
+      .lineTo(cx + sx + skewX, yBack)
+      .lineTo(cx + sxBot + skewX * 0.92, yBack + lipH)
+      .lineTo(cx + sxBot, yBot)
+      .closePath()
+      .stroke({ width: outW * 0.88, color: neon, alpha: outA * 0.75 });
   }
 }
 
