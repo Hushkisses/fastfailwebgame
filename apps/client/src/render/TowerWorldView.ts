@@ -144,7 +144,8 @@ export class TowerWorldView {
     const view = avatarWorldPos(inp.selfFloor, inp.selfSide, inp.selfFloor);
 
     const desiredCamX = inp.screenW * 0.5 - view.x;
-    const desiredCamY = inp.screenH * 0.88 - view.y;
+    /** 낮은 시점 — 플레이어가 발판 앞에 서서 위·앞을 올려보는 느낌 */
+    const desiredCamY = inp.screenH * 0.91 - view.y;
 
     if (!Number.isFinite(this.camTX)) this.camTX = desiredCamX;
     else this.camTX += (desiredCamX - this.camTX) * this.camLerp;
@@ -237,15 +238,50 @@ export class TowerWorldView {
     }
   }
 
-  private drawVoidBand(span: { xlR: number; xrR: number; yTop: number; yBot: number }): void {
+  private drawVoidBand(span: { xlR: number; xrR: number; yTop: number; yBot: number; lo: number }): void {
     this.laneG.clear();
-    const { xlR, xrR, yTop, yBot } = span;
+    const { xlR, xrR, yTop, yBot, lo } = span;
     const innerL = xlR + ISO_TOP_HW * 0.42;
     const innerR = xrR - ISO_TOP_HW * 0.42;
+
+    /** ① 중앙 협곡 — 슬래브 사이로 보이는 어두운 깊은 통로 */
+    const channelTop = yTop - TILE_VERTICAL_GAP * 0.35;
+    const channelBot = yBot + TILE_VERTICAL_GAP * 0.5;
     this.laneG
-      .rect(innerL, yTop - TILE_VERTICAL_GAP * 0.35, innerR - innerL, yBot - yTop + TILE_VERTICAL_GAP * 0.7)
-      .fill({ color: 0x010206, alpha: 0.92 })
+      .rect(innerL, channelTop, innerR - innerL, channelBot - channelTop)
+      .fill({ color: 0x010206, alpha: 0.95 })
       .stroke({ width: 0.8, color: 0x111822, alpha: 0.06 });
+
+    /** ② 협곡 내부 미스트 — 가로로 흐르는 깊이 단서 */
+    const layers = 9;
+    for (let i = 0; i < layers; i++) {
+      const t = i / (layers - 1);
+      const y = channelTop + (channelBot - channelTop) * t;
+      const w = (innerR - innerL) * (0.6 + (i % 3) * 0.12);
+      const xc = (innerL + innerR) * 0.5;
+      this.laneG.ellipse(xc, y, w * 0.5, 18).fill({
+        color: 0x05080f,
+        alpha: 0.22 + (i % 2) * 0.08
+      });
+    }
+
+    /** ③ 가장 아래쪽 — 가장자리까지 덮는 심연 (모든 슬래브 발 밑) */
+    const abyssTop = floorWorldY(lo) + TILE_VERTICAL_GAP * 0.5;
+    const abyssH = TILE_VERTICAL_GAP * 6;
+    const fullL = xlR - 240;
+    const fullR = xrR + 240;
+    this.laneG
+      .rect(fullL, abyssTop, fullR - fullL, abyssH)
+      .fill({ color: 0x000000, alpha: 0.55 });
+    for (let i = 0; i < 5; i++) {
+      const t = i / 5;
+      const y = abyssTop + abyssH * t;
+      const h = abyssH * 0.24;
+      this.laneG.rect(fullL, y, fullR - fullL, h).fill({
+        color: 0x000000,
+        alpha: 0.18 + t * 0.18
+      });
+    }
   }
 
   private drawColumns(inp: TowerSyncInput, lo: number, hi: number, pulse: number, perf: number): void {

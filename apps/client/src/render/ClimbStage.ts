@@ -47,6 +47,7 @@ export class ClimbStage {
   private readonly leftCap = new Text({ text: "L", style: { fill: 0xffffff, fontSize: 22, fontWeight: "700" } });
   private readonly rightCap = new Text({ text: "R", style: { fill: 0xffffff, fontSize: 22, fontWeight: "700" } });
   private readonly hudSpine = new Graphics();
+  private readonly hudPanel = new Graphics();
   private readonly pickLayer = new Container();
   private readonly pickSlots: { wrap: Container; hit: Graphics; cap: Text }[] = [];
   private readonly vignette = new Graphics();
@@ -65,28 +66,28 @@ export class ClimbStage {
     this.title = new Text({
       text: "",
       style: {
-        fill: 0xd8e4f0,
-        fontSize: 15,
-        fontWeight: "700",
-        letterSpacing: 0.4,
-        lineHeight: 20,
+        fill: 0xf2f8ff,
+        fontSize: 17,
+        fontWeight: "800",
+        letterSpacing: 0.5,
+        lineHeight: 22,
         stroke: { color: 0x000000, width: 5 }
       }
     });
     this.stats = new Text({
       text: "",
       style: {
-        fill: 0xd0dde8,
-        fontSize: 10,
-        fontWeight: "600",
-        lineHeight: 14,
+        fill: 0xe0eaf4,
+        fontSize: 12,
+        fontWeight: "700",
+        lineHeight: 16,
         stroke: { color: 0x000000, width: 4 }
       }
     });
-    this.title.position.set(16, 14);
-    this.stats.position.set(16, 56);
-    this.title.alpha = 0.96;
-    this.stats.alpha = 0.92;
+    this.title.position.set(24, 22);
+    this.stats.position.set(24, 70);
+    this.title.alpha = 1;
+    this.stats.alpha = 1;
 
     this.leftCap.anchor.set(0.5, 1.35);
     this.leftCap.position.set(0, -8);
@@ -117,12 +118,16 @@ export class ClimbStage {
     this.rightWrap.visible = false;
 
     this.towerView = new TowerWorldView(app);
+    this.hudPanel.zIndex = 90;
     this.hudSpine.zIndex = 100;
     this.pickLayer.zIndex = 60;
     this.vignette.eventMode = "none";
 
+    this.title.zIndex = 110;
+    this.stats.zIndex = 110;
+
     this.root.sortableChildren = true;
-    this.root.addChild(this.title, this.stats, this.hudSpine, this.vignette);
+    this.root.addChild(this.hudPanel, this.title, this.stats, this.hudSpine, this.vignette);
     this.towerView.worldRoot.addChild(this.leftWrap, this.rightWrap, this.pickLayer);
     this.worldRootInteractiveSort();
 
@@ -247,10 +252,28 @@ export class ClimbStage {
     this.worldH = height;
     this.hudSpine.clear();
 
+    /** HUD 백드롭 패널 — 글자 가독성 확보 (좌상단 SF 패널) */
+    this.hudPanel.clear();
+    const panelX = 12;
+    const panelY = 12;
+    const panelW = 268;
+    const panelH = 116;
+    this.hudPanel
+      .roundRect(panelX, panelY, panelW, panelH, 12)
+      .fill({ color: 0x05080f, alpha: 0.78 })
+      .stroke({ width: 1.2, color: 0x4a90c0, alpha: 0.45 });
+    /** 좌측 네온 바 — 패널 액센트 */
+    this.hudPanel
+      .roundRect(panelX + 4, panelY + 8, 3, panelH - 16, 1.5)
+      .fill({ color: 0x5cd5ff, alpha: 0.9 });
+    this.hudPanel
+      .roundRect(panelX + 4, panelY + 8, 3, panelH - 16, 1.5)
+      .stroke({ width: 0.8, color: 0xaef0ff, alpha: 0.7 });
+
     const band = Math.min(width, height) * 0.22;
     this.vignette.clear();
     this.vignette.rect(0, 0, width, band).fill({ color: 0x000000, alpha: 0.55 });
-    this.vignette.rect(0, height - band, width, band).fill({ color: 0x000000, alpha: 0.62 });
+    this.vignette.rect(0, height - band, width, band).fill({ color: 0x000000, alpha: 0.7 });
     this.vignette.rect(0, 0, band, height).fill({ color: 0x000000, alpha: 0.48 });
     this.vignette.rect(width - band, 0, band, height).fill({ color: 0x000000, alpha: 0.48 });
     this.vignette.zIndex = 95;

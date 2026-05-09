@@ -10,15 +10,22 @@ import { blendFogColor } from "./towerLayout";
 /** ClimbStage 픽 박스 호환 */
 export const ISO_EXT_FRONT_Y = SLAB_LIP_DEPTH;
 
-/** 공중 콘크리트 슬래브 베이스 — 윗면(밝음) → 앞면(중간) → 옆면(가장 어둠) */
-const TOP_L = 0x5a6470;
-const TOP_R = 0x645a72;
-const FRONT_L = 0x363c46;
-const FRONT_R = 0x3a3640;
-const SIDE_L = 0x1f242c;
-const SIDE_R = 0x231f28;
-const EDGE_HI = 0x9aa6b6;
-const UNDER_SHADOW = 0x05080c;
+/**
+ * SF 유리·금속 슬래브 — 차가운 색조, 어두운 베이스.
+ * 윗면(차가운 푸른빛 반사) → 앞면(검푸른 금속) → 옆면(거의 검정).
+ */
+const TOP_L = 0x4a5c72;
+const TOP_R = 0x4e4a70;
+const FRONT_L = 0x1e2632;
+const FRONT_R = 0x251e30;
+const SIDE_L = 0x0d1118;
+const SIDE_R = 0x110d16;
+const EDGE_HI = 0xa8c8e0;
+const UNDER_SHADOW = 0x000000;
+
+/** 레인 네온 — 항상 은은하게, 픽 시 강하게 */
+const NEON_L = 0x5cd5ff;
+const NEON_R = 0xd87cff;
 
 function mixRgb(a: number, b: number, t: number): number {
   if (t <= 0) return a;
@@ -75,6 +82,7 @@ export function drawFloatingSlab(
   const laneT = lane === "right" ? 1 : 0;
   /** 어느 쪽 옆면이 보이는지 — 플레이어(중앙) 쪽 면이 보이도록 */
   const sideXSign = lane === "left" ? 1 : -1;
+  const neonLane = lane === "left" ? NEON_L : NEON_R;
 
   let topC = mixRgb(TOP_L, TOP_R, laneT);
   let frontC = mixRgb(FRONT_L, FRONT_R, laneT);
@@ -119,13 +127,37 @@ export function drawFloatingSlab(
   const frontAlpha = broken ? 0.5 * bodyA : Math.min(1.0, 0.97 * bodyA);
   const sideAlpha = broken ? 0.46 * bodyA : Math.min(1.0, 0.94 * bodyA);
 
-  /** 공중 부유감 — 슬래브 아래 어두운 그림자 타원 */
+  /** 공중 부유감 — 슬래브 아래 어두운 그림자 타원 (이중 코어) */
   if (!broken) {
-    const shY = yBot + lipH * 0.36;
-    const shR = hw * (0.84 + 0.08 * (1 - depthFade));
-    g.ellipse(cx + skewX * 0.32, shY, shR, lipH * 0.16).fill({
+    const shY = yBot + lipH * 0.42;
+    const shR = hw * (0.96 + 0.08 * (1 - depthFade));
+    g.ellipse(cx + skewX * 0.32, shY, shR, lipH * 0.22).fill({
       color: 0x000000,
-      alpha: 0.3 * bodyA
+      alpha: 0.45 * bodyA
+    });
+    g.ellipse(cx + skewX * 0.32, shY, shR * 0.66, lipH * 0.13).fill({
+      color: 0x000000,
+      alpha: 0.36 * bodyA
+    });
+  }
+
+  /** 슬래브 바로 아래 안개 기둥 — 심연으로 흩어지는 미스트 */
+  if (!broken && depthFade < 0.7) {
+    const mistA = (1 - depthFade) * 0.22 * bodyA;
+    const mY1 = yBot + lipH * 0.55;
+    const mY2 = yBot + lipH * 2.4;
+    const mY3 = yBot + lipH * 4.0;
+    g.ellipse(cx + skewX * 0.25, mY1, hw * 0.78, lipH * 0.22).fill({
+      color: 0x070b14,
+      alpha: mistA
+    });
+    g.ellipse(cx + skewX * 0.18, mY2, hw * 0.55, lipH * 0.18).fill({
+      color: 0x040810,
+      alpha: mistA * 0.7
+    });
+    g.ellipse(cx + skewX * 0.1, mY3, hw * 0.34, lipH * 0.14).fill({
+      color: 0x02050a,
+      alpha: mistA * 0.45
     });
   }
 
@@ -137,6 +169,30 @@ export function drawFloatingSlab(
     .closePath()
     .fill({ color: topC, alpha: topAlpha });
 
+  /** 윗면 유리 반사 — 비스듬한 밝은 띠 (천장 광원이 닿는 느낌) */
+  if (!broken) {
+    const reflA = 0.22 * bodyA * (1 - depthFade * 0.5);
+    const refLPad = hw * 0.18;
+    const refX1 = cx - hw + refLPad - skewX * 0.05;
+    const refX2 = cx + hw * 0.55 + skewX * 0.85;
+    const refY1 = yTop - topH * 0.05;
+    const refY2 = yBack + topH * 0.32;
+    g.moveTo(refX1, refY1)
+      .lineTo(refX2, refY2)
+      .stroke({
+        width: Math.max(1.0, 1.6 * sc),
+        color: 0xc8e0f4,
+        alpha: reflA
+      });
+    g.moveTo(refX1 + hw * 0.08, refY1 + topH * 0.1)
+      .lineTo(refX2 - hw * 0.04, refY2 - topH * 0.05)
+      .stroke({
+        width: Math.max(0.6, 0.9 * sc),
+        color: 0xe0f0ff,
+        alpha: reflA * 0.55
+      });
+  }
+
   /** ② 옆면 — 플레이어(중앙)쪽 측벽 (가장 어둡게) */
   const sx = sideXSign * hw;
   const sxBot = sideXSign * hwBot;
@@ -147,7 +203,7 @@ export function drawFloatingSlab(
     .closePath()
     .fill({ color: sideC, alpha: sideAlpha });
 
-  /** ③ 앞면 — 두꺼운 콘크리트 벽 */
+  /** ③ 앞면 — 두꺼운 검푸른 금속 벽 */
   g.moveTo(cx - hw, yTop)
     .lineTo(cx + hw, yTop)
     .lineTo(cx + hwBot, yBot)
@@ -155,9 +211,44 @@ export function drawFloatingSlab(
     .closePath()
     .fill({ color: frontC, alpha: frontAlpha });
 
+  /** 앞면 상단 미세한 빛 띠 — 유리 모서리에 빛이 머무는 느낌 */
+  if (!broken) {
+    const topGlowH = lipH * 0.18;
+    fillQuad(
+      g,
+      cx - hw * 0.98,
+      yTop + 0.5,
+      cx + hw * 0.98,
+      yTop + 0.5,
+      cx + hw * 0.98,
+      yTop + topGlowH,
+      cx - hw * 0.98,
+      yTop + topGlowH,
+      { color: 0x4a6a86, alpha: 0.22 * bodyA * (1 - depthFade * 0.5) }
+    );
+  }
+
+  /** 앞면 수직 반사 띠 — 유리·금속 광택 (플레이어 반대편 가장자리) */
+  if (!broken) {
+    const reflX = lane === "left" ? cx + hw * 0.68 : cx - hw * 0.68;
+    const reflW = hw * 0.05;
+    fillQuad(
+      g,
+      reflX - reflW,
+      yTop + lipH * 0.06,
+      reflX + reflW,
+      yTop + lipH * 0.06,
+      reflX + reflW * 0.88,
+      yBot - lipH * 0.08,
+      reflX - reflW * 0.88,
+      yBot - lipH * 0.08,
+      { color: 0x6a8aa6, alpha: 0.16 * bodyA * (1 - depthFade * 0.55) }
+    );
+  }
+
   /** 앞면 하단 어두운 그라데이션 — 두께·밀도감 */
   if (!broken) {
-    const shH = lipH * 0.36;
+    const shH = lipH * 0.4;
     fillQuad(
       g,
       cx - hwBot * 0.99,
@@ -168,7 +259,7 @@ export function drawFloatingSlab(
       yBot,
       cx - hwBot,
       yBot,
-      { color: UNDER_SHADOW, alpha: 0.45 * bodyA }
+      { color: UNDER_SHADOW, alpha: 0.55 * bodyA }
     );
   }
 
@@ -215,15 +306,30 @@ export function drawFloatingSlab(
       alpha: 0.4 * bodyA
     });
 
-  /** 윗면 가장자리 — 레인 색 액센트 (얇은 색띠) */
+  /** 항시 레인 네온 — 윗면-앞면 경계의 은은한 에지 라이트 (SF 패널 느낌) */
   if (!broken && !neonPick) {
-    const tint = lane === "left" ? 0x4a90b8 : 0x9a5a90;
     g.moveTo(cx - hw, yTop)
       .lineTo(cx + hw, yTop)
       .stroke({
-        width: Math.max(0.6, 0.9 * sc),
-        color: tint,
-        alpha: Math.max(0.1, 0.22 * (1 - depthFade * 0.6))
+        width: Math.max(0.9, 1.4 * sc),
+        color: neonLane,
+        alpha: Math.max(0.18, 0.4 * (1 - depthFade * 0.55))
+      });
+    /** 앞면 하단 살짝 비치는 언더글로우 */
+    g.moveTo(cx - hwBot * 0.94, yBot - 1)
+      .lineTo(cx + hwBot * 0.94, yBot - 1)
+      .stroke({
+        width: Math.max(0.6, 1.0 * sc),
+        color: neonLane,
+        alpha: Math.max(0.08, 0.2 * (1 - depthFade * 0.65))
+      });
+    /** 윗면 뒷 모서리에도 얇게 */
+    g.moveTo(cx - hw + skewX, yBack)
+      .lineTo(cx + hw + skewX, yBack)
+      .stroke({
+        width: Math.max(0.5, 0.8 * sc),
+        color: neonLane,
+        alpha: Math.max(0.06, 0.16 * (1 - depthFade * 0.7))
       });
   }
 

@@ -3,8 +3,8 @@ import { blendFogColor } from "./towerLayout";
 
 export type ScrollSide = "left" | "right";
 
-/** 좌·우 통로 폭 — 두꺼운 공중 슬래브가 마주보고 떠 있음 */
-export const LANE_OFFSET_X = 184;
+/** 좌·우 통로 폭 — 점프해야 할 거리감, 선택 직전의 긴장감 */
+export const LANE_OFFSET_X = 222;
 
 /** 층 간 세로 간격(월드) — 두꺼워진 슬래브를 수용 */
 export const TILE_VERTICAL_GAP = 174;
