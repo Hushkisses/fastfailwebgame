@@ -72,7 +72,8 @@ export class TowerWorldView {
 
   private camTX = Number.NaN;
   private camTY = Number.NaN;
-  private readonly camLerp = 0.18;
+  /** 낮은 시선 → 바로 앞 두 발판이 크게 보이는 1인칭 느낌 */
+  private readonly camLerp = 0.14;
 
   constructor(_app: Application) {
     this.worldRoot.sortableChildren = true;
@@ -89,10 +90,10 @@ export class TowerWorldView {
       const label = new Text({
         text: "",
         style: {
-          fill: 0xffffff,
-          fontSize: 14,
-          fontWeight: "700",
-          stroke: { color: 0x0a1020, width: 3 }
+          fill: 0xc8dcff,
+          fontSize: 10,
+          fontWeight: "600",
+          stroke: { color: 0x000000, width: 4 }
         }
       });
       label.anchor.set(0.5, 1);
@@ -107,7 +108,7 @@ export class TowerWorldView {
     for (let i = 0; i < 18; i++) {
       const t = new Text({
         text: "",
-        style: { fill: 0xfff1b0, fontSize: 10, stroke: { color: 0x000000, width: 5 } }
+        style: { fill: 0xffeeaa, fontSize: 9, stroke: { color: 0x000000, width: 4 } }
       });
       t.anchor.set(0.5, 1);
       t.visible = false;
@@ -143,7 +144,7 @@ export class TowerWorldView {
     const view = avatarWorldPos(inp.selfFloor, inp.selfSide, inp.selfFloor);
 
     const desiredCamX = inp.screenW * 0.5 - view.x;
-    const desiredCamY = inp.screenH * 0.7 - view.y;
+    const desiredCamY = inp.screenH * 0.83 - view.y;
 
     if (!Number.isFinite(this.camTX)) this.camTX = desiredCamX;
     else this.camTX += (desiredCamX - this.camTX) * this.camLerp;
@@ -201,16 +202,16 @@ export class TowerWorldView {
     const xlP = xlR - pillarW - 30;
     const xrP = xrR + 30;
     const h = yBot - yTop;
-    this.pillarG.roundRect(xlP, yTop, pillarW, h, 8).fill({ color: 0x06090f, alpha: 0.78 });
-    this.pillarG.roundRect(xrP, yTop, pillarW, h, 8).fill({ color: 0x06090f, alpha: 0.78 });
+    this.pillarG.roundRect(xlP, yTop, pillarW, h, 8).fill({ color: 0x030508, alpha: 0.92 });
+    this.pillarG.roundRect(xrP, yTop, pillarW, h, 8).fill({ color: 0x030508, alpha: 0.92 });
 
-    const glowA = 0.28 + pulse * 0.42;
+    const glowA = 0.12 + pulse * 0.18;
     let fy = yTop + 56;
     while (fy < yBot - 40) {
       const seed = Math.floor(fy + vf * 13) * 1103515245;
       const j = ((seed >> 8) & 255) % 14;
-      this.pillarG.rect(xlP + 10, fy + j * 0.15, 11, 11).fill({ color: 0x3399ff, alpha: glowA * 0.65 });
-      this.pillarG.rect(xrP + pillarW - 21, fy + j * 0.12, 11, 11).fill({ color: 0xaa66ee, alpha: glowA * 0.55 });
+      this.pillarG.rect(xlP + 10, fy + j * 0.15, 9, 9).fill({ color: 0x2266aa, alpha: glowA * 0.45 });
+      this.pillarG.rect(xrP + pillarW - 19, fy + j * 0.12, 9, 9).fill({ color: 0x7744aa, alpha: glowA * 0.4 });
       fy += TILE_VERTICAL_GAP * 0.42;
     }
 
@@ -218,7 +219,7 @@ export class TowerWorldView {
     for (let f = lo; f <= hi; f += step) {
       const twL = tileWorldPos(f, "left", vf);
       const y = twL.y;
-      this.pillarG.moveTo(xlP + pillarW, y).lineTo(xrP, y).stroke({ width: 0.85, color: 0xffffff, alpha: 0.04 });
+      this.pillarG.moveTo(xlP + pillarW, y).lineTo(xrP, y).stroke({ width: 0.6, color: 0x1a2230, alpha: 0.05 });
     }
   }
 
@@ -226,13 +227,13 @@ export class TowerWorldView {
     this.railG.clear();
     const { xlR, xrR, yTop, yBot, lo, hi } = span;
 
-    this.railG.moveTo(xlR, yTop).lineTo(xlR, yBot).stroke({ width: 3.4, color: 0xb8d4ff, alpha: 0.32 });
-    this.railG.moveTo(xrR, yTop).lineTo(xrR, yBot).stroke({ width: 3.4, color: 0xd4b8e8, alpha: 0.28 });
+    this.railG.moveTo(xlR, yTop).lineTo(xlR, yBot).stroke({ width: 2.2, color: 0x334455, alpha: 0.14 });
+    this.railG.moveTo(xrR, yTop).lineTo(xrR, yBot).stroke({ width: 2.2, color: 0x443355, alpha: 0.12 });
 
     const step = Math.max(4, Math.floor((hi - lo) / 14));
     for (let f = lo; f <= hi; f += step) {
       const y = floorWorldY(f);
-      this.railG.moveTo(xlR - 10, y).lineTo(xrR + 10, y).stroke({ width: 1.05, color: 0xffffff, alpha: 0.07 });
+      this.railG.moveTo(xlR - 10, y).lineTo(xrR + 10, y).stroke({ width: 0.75, color: 0x223344, alpha: 0.06 });
     }
   }
 
@@ -243,25 +244,8 @@ export class TowerWorldView {
     const innerR = xrR - ISO_TOP_HW * 0.42;
     this.laneG
       .rect(innerL, yTop - TILE_VERTICAL_GAP * 0.35, innerR - innerL, yBot - yTop + TILE_VERTICAL_GAP * 0.7)
-      .fill({ color: 0x020408, alpha: 0.62 })
-      .stroke({ width: 1, color: 0x223344, alpha: 0.08 });
-  }
-
-  /** 위쪽(+전진) 방향 표시 */
-  private drawForwardCue(g: Graphics, cx: number, cy: number, alpha: number, scale: number): void {
-    const hv = ISO_TOP_HV * scale;
-    const tipY = cy - hv - 52 * scale;
-    const baseY = cy - hv - 14 * scale;
-    g.moveTo(cx - 28 * scale, baseY)
-      .lineTo(cx, tipY)
-      .lineTo(cx + 28 * scale, baseY)
-      .closePath()
-      .stroke({ width: 2.4, color: 0xfffde6, alpha });
-    g.moveTo(cx - 28 * scale, baseY)
-      .lineTo(cx, tipY)
-      .lineTo(cx + 28 * scale, baseY)
-      .closePath()
-      .fill({ color: 0xffffff, alpha: alpha * 0.14 });
+      .fill({ color: 0x010206, alpha: 0.92 })
+      .stroke({ width: 0.8, color: 0x111822, alpha: 0.06 });
   }
 
   private drawColumns(inp: TowerSyncInput, lo: number, hi: number, pulse: number, perf: number): void {
@@ -279,14 +263,17 @@ export class TowerWorldView {
         const broken = this.broken.has(kk);
         const shineBase = glowPick(kk) ? 0.48 + pulse * 0.52 : 0;
         const gw = ISO_TOP_HW * 2.4 * tw.scale;
+        const ahead = c - inp.selfFloor;
+        const depthFade = Math.min(1, Math.max(0, ahead * 0.065 + fog * 0.35));
 
         drawBridgeVerticalBlock(this.paneG, loc.x, loc.y, {
           fog,
           broken,
           lane,
-          glow: shineBase ? shineBase : fog * 0.06,
+          glow: shineBase ? shineBase : fog * 0.05,
           scale: tw.scale,
-          neonPick: shineBase > 0.05
+          neonPick: shineBase > 0.05,
+          depthFade
         });
 
         if (broken) {
@@ -297,11 +284,6 @@ export class TowerWorldView {
             gw,
             c * 19 + (lane === "right" ? 91 : 0)
           );
-        }
-
-        if (shineBase && !broken) {
-          const a = shineBase * 0.78;
-          this.drawForwardCue(this.paneG, loc.x, loc.y, Math.min(0.95, a), tw.scale);
         }
 
         const brkLoc = this.localBreakStarted.get(kk);
@@ -328,12 +310,12 @@ export class TowerWorldView {
       .lineTo(x0 + span - 18 * sc, bannerY)
       .lineTo(x0 + 18 * sc, bannerY)
       .closePath()
-      .fill({ color: 0xffde66, alpha: 0.88 });
+      .fill({ color: 0x886622, alpha: 0.22 });
     const mid = (gl.x + gr.x) * 0.5;
     this.paneG
       .moveTo(mid, bannerY + 42 * sc)
       .lineTo(mid, gy - ISO_TOP_HV * sc - 12 * sc)
-      .stroke({ width: 1.8, color: 0xffffff, alpha: 0.38 });
+      .stroke({ width: 1.2, color: 0xffcc66, alpha: 0.18 });
   }
 
   private drawHintFlares(rows: HintFlash[], serverNow: number, viewerFloor: number): void {
@@ -346,7 +328,7 @@ export class TowerWorldView {
       const bh = (ISO_TOP_HV * 2 + 88) * p.scale;
       this.hintGfx
         .roundRect(p.x - bw / 2, p.y - bh / 2 + 8 * p.scale, bw, bh, 16 * p.scale)
-        .stroke({ width: 3.5 + pulse, color: 0xfff8b0, alpha: 0.28 + pulse * 0.5 });
+        .stroke({ width: 1.8 + pulse * 0.5, color: 0xaa9944, alpha: 0.14 + pulse * 0.18 });
     }
   }
 
@@ -358,8 +340,8 @@ export class TowerWorldView {
       const lbl = this.hintTexts[i++];
       const p = tileWorldPos(h.floor, h.safeSide, viewerFloor);
       const nn = h.nickname.length > 14 ? `${h.nickname.slice(0, 13)}…` : h.nickname;
-      lbl.text = `${nn} · ⚡안전패널 노출중`;
-      lbl.position.set(p.x, p.y - ISO_TOP_HV * p.scale - 118 * p.scale);
+      lbl.text = nn;
+      lbl.position.set(p.x, p.y - ISO_TOP_HV * p.scale - 96 * p.scale);
       lbl.visible = true;
     }
     for (; i < this.hintTexts.length; i++) this.hintTexts[i].visible = false;
@@ -391,11 +373,9 @@ export class TowerWorldView {
       slot.root.scale.set(1);
       slot.root.position.set(x, y);
       slot.root.zIndex = 500000;
-      slot.body.clear().ellipse(0, 6, 12, 8).fill({ color: 0xff7788, alpha: 0.55 });
-      slot.label.text = `${g.name.length > 14 ? `${g.name.slice(0, 13)}…` : g.name}\n· 추락`;
-      slot.label.style.fontSize = 14;
-      slot.label.style.fontWeight = "700";
-      slot.label.style.fill = 0xfff0f8;
+      slot.body.clear().ellipse(0, 6, 12, 8).fill({ color: 0xff5566, alpha: 0.42 });
+      slot.label.text = "";
+      slot.label.visible = false;
       slot.label.position.set(0, -52);
       if (tRaw >= 1 - 1e-6) this.falls.delete(g.id);
     }
@@ -436,30 +416,37 @@ export class TowerWorldView {
         slot.body.position.set(0, 0);
         const self = pl.id === inp.selfId;
         const many = n > 18;
-        const rO = self ? (many ? 9 : 11) : many ? 6 : 8;
-        const rI = self ? (many ? 7 : 9) : many ? 4.5 : 6.5;
+        const dist = Math.abs(row - inp.selfFloor);
+        const rO = self ? (many ? 8 : 10) : many ? 5 : 7;
+        const rI = self ? (many ? 6 : 8) : many ? 4 : 6;
         slot.body.clear().circle(0, 0, rO).stroke({
-          width: self ? 3 : 1.5,
-          color: self ? 0xfff188 : 0x9aceff,
-          alpha: self ? 0.95 : 0.62
+          width: self ? 2.5 : 1.2,
+          color: self ? 0x66eeff : 0x5588bb,
+          alpha: self ? 0.85 : 0.35
         });
         slot.body.circle(0, 0, rI).fill({
-          color: self ? 0xfff4dc : 0x93cfff,
-          alpha: self ? 0.92 : 0.54
+          color: self ? 0xe8f4ff : 0x406080,
+          alpha: self ? 0.55 : 0.22
         });
 
         slot.label.anchor.set(0.5, 1);
-        const nmCap = 22;
-        const raw = pl.name.length > nmCap ? `${pl.name.slice(0, nmCap - 1)}…` : pl.name;
-        slot.label.text = self ? `YOU\n▼\n${raw} ⭐` : raw;
-        slot.label.style.fontSize = 14;
-        slot.label.style.fontWeight = "700";
-        const hinted = hintedUsers.has(pl.id);
-        slot.label.style.fill = self ? 0xfffce8 : hinted ? 0xfff2b8 : 0xffffff;
-        slot.label.style.stroke = { color: 0x0a1020, width: 3 };
-        slot.label.style.align = "center";
-        slot.label.style.lineHeight = self ? 14 : 18;
-        slot.label.position.set(0, -14 - ix * nickLine);
+        const showName = self || (dist <= 4 && !many);
+        slot.label.visible = showName;
+        if (!showName) {
+          slot.label.text = "";
+        } else {
+          const nmCap = self ? 12 : 10;
+          const raw = pl.name.length > nmCap ? `${pl.name.slice(0, nmCap - 1)}…` : pl.name;
+          slot.label.text = self ? `YOU · ${raw}` : raw;
+          slot.label.style.fontSize = self ? 11 : 9;
+          slot.label.style.fontWeight = self ? "700" : "600";
+          const hinted = hintedUsers.has(pl.id);
+          slot.label.style.fill = self ? 0xaeeeff : hinted ? 0xccbbaa : 0x8899aa;
+          slot.label.style.stroke = { color: 0x000000, width: 4 };
+          slot.label.style.align = "center";
+          slot.label.style.lineHeight = 13;
+          slot.label.position.set(0, -12 - ix * nickLine);
+        }
       });
     }
 

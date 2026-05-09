@@ -3,24 +3,24 @@ import { blendFogColor } from "./towerLayout";
 
 export type ScrollSide = "left" | "right";
 
-/** 화면 중앙 기준 좌·우 레인 X 오프셋 (두 줄 다리) */
-export const LANE_OFFSET_X = 96;
+/** 화면 중앙 기준 좌·우 레인 X 오프셋 — 바로 앞 두 개의 큰 발판 간격 */
+export const LANE_OFFSET_X = 118;
 
 /**
  * 층 간 세로 간격(월드). 값이 클수록 타일이 더 뜨고 낙하 깊이감이 커짐.
  */
-export const TILE_VERTICAL_GAP = 138;
+export const TILE_VERTICAL_GAP = 148;
 
 /** 레일·보이드 여백 */
 export const BRIDGE_MARGIN = 140;
 
-/** 입체 타일 — 윗면(발판) 마름모 반가로 */
-export const ISO_TOP_HW = 42;
-/** 입체 타일 — 윗면 마름모 반세로 (화면 위쪽이 등 뒤) */
-export const ISO_TOP_HV = 18;
+/** 입체 타일 — 윗면(발판) 반가로 (1인칭에 가깝게 크게) */
+export const ISO_TOP_HW = 52;
+/** 입체 타일 — 윗면 반세로 */
+export const ISO_TOP_HV = 20;
 
-/** 유저를 향하는 앞면 두께 (+Y 방향, 화면 아래로) */
-export const ISO_FRONT_DEPTH = 46;
+/** 유저를 향하는 앞면 두께 — 직사각형 슬랩 느낌 */
+export const ISO_FRONT_DEPTH = 54;
 
 /** 좌우 얇은 옆면 깊이 보정 */
 export const ISO_SIDE_DEPTH_X = 12;
@@ -40,22 +40,28 @@ export function floorWorldY(floor: number): number {
   return -(Math.max(1, floor) - 1) * TILE_VERTICAL_GAP;
 }
 
-/** 멀리 있는 층일수록 작아지는 원근 스케일 (1 = 플레이어와 같은 열) */
+/** 멀리 갈수록 작아져 어둠 속으로 사라지는 원근 (깊은 소실) */
 export function tilePerspectiveScale(tileFloor: number, viewerFloor: number): number {
   const d = tileFloor - viewerFloor;
-  if (d <= 0) return Math.min(1.06, 1 - d * 0.004);
-  return Math.max(0.52, 1 - d * 0.012);
+  if (d <= 0) return Math.min(1.14, 1.06 - d * 0.01);
+  const inv = 1 / (1 + d * 0.112);
+  return Math.max(0.16, inv);
 }
 
-/** 원근 적용 월드 좌표 + 타일 스케일 (좌우 레인이 원점 쪽으로 살짝 수렴) */
+/** 원근 적용 월드 좌표 + 타일 스케일 (멀수록 통로 중앙으로 수렴) */
 export function tileWorldPos(
   floor: number,
   side: ScrollSide,
   viewerFloor: number
 ): { x: number; y: number; scale: number } {
-  const scale = tilePerspectiveScale(floor, viewerFloor);
+  let scale = tilePerspectiveScale(floor, viewerFloor);
+  const d = floor - viewerFloor;
+  /** 바로 다음 줄 선택지는 화면을 많이 채우도록 약간 확대 */
+  if (d === 1) scale *= 1.22;
+  else if (d === 2) scale *= 1.06;
+
   const laneBase = side === "left" ? -LANE_OFFSET_X : LANE_OFFSET_X;
-  const converge = 0.78 + 0.22 * scale;
+  const converge = 0.38 + 0.62 * Math.min(1, scale * 1.15);
   return {
     x: laneBase * converge,
     y: floorWorldY(floor),

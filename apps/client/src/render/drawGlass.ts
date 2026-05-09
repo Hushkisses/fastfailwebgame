@@ -62,11 +62,14 @@ export function drawBridgeVerticalBlock(
     lane: ScrollSide;
     scale?: number;
     neonPick?: boolean;
+    /** 0=가까움, 1=멀리·어둠에 잠김 */
+    depthFade?: number;
   }
 ): void {
   const { fog, broken, glow, lane, neonPick = false } = opts;
   const sc = opts.scale ?? 1;
-  const laneMix = lane === "right" ? 0.24 : 0;
+  const depthFade = opts.depthFade ?? 0;
+  const laneMix = lane === "right" ? 0.22 : 0;
 
   let topC = mixRgb(BRIDGE_TOP_BASE, LANE_PINK, laneMix);
   let sideC = mixRgb(BRIDGE_SIDE_BASE, LANE_PINK, laneMix * 0.55);
@@ -98,8 +101,9 @@ export function drawBridgeVerticalBlock(
   const sdy = ISO_SIDE_DEPTH_Y * sc;
   const D = ISO_FRONT_DEPTH * sc;
 
-  fillQuad(g, lx, ly, tx, ty, tx - sdx, ty + sdy, lx - sdx * 0.85, ly + sdy * 0.92, { color: sideC, alpha: 1 });
-  fillQuad(g, tx, ty, rx, ry, rx + sdx * 0.85, ry + sdy * 0.92, tx + sdx, ty + sdy, { color: sideC, alpha: 1 });
+  const bodyA = Math.max(0.25, 1 - depthFade * 0.55);
+  fillQuad(g, lx, ly, tx, ty, tx - sdx, ty + sdy, lx - sdx * 0.85, ly + sdy * 0.92, { color: sideC, alpha: bodyA });
+  fillQuad(g, tx, ty, rx, ry, rx + sdx * 0.85, ry + sdy * 0.92, tx + sdx, ty + sdy, { color: sideC, alpha: bodyA });
 
   const fwTop = hw + 10 * sc;
   const fwBot = hw * 0.72;
@@ -115,34 +119,59 @@ export function drawBridgeVerticalBlock(
     fy1,
     cx - fwBot,
     fy1,
-    { color: frontC, alpha: 1 }
+    { color: frontC, alpha: bodyA }
   );
 
-  const topAlpha = broken ? 0.42 : Math.min(0.92, 0.6 + glow * 0.32);
-  g.moveTo(tx, ty)
-    .lineTo(rx, ry)
-    .lineTo(bx, by)
-    .lineTo(lx, ly)
-    .closePath()
-    .fill({ color: topC, alpha: topAlpha })
-    .stroke({
-      width: (1.15 + glow * 2.8) * sc,
-      color: 0xffffff,
-      alpha: broken ? 0.12 : 0.14 + glow * 0.52
-    });
+  const topAlphaBase = broken ? 0.38 : 0.26 + glow * 0.28;
+  const topAlpha = Math.max(0.06, topAlphaBase * (1 - depthFade * 0.75));
+  g.moveTo(tx, ty).lineTo(rx, ry).lineTo(bx, by).lineTo(lx, ly).closePath().fill({ color: topC, alpha: topAlpha });
 
-  if (neonPick && !broken) {
-    const neon = lane === "left" ? 0x44eeff : 0xd466ff;
+  if (!broken && !neonPick) {
+    const edge = lane === "left" ? 0x2a6a88 : 0x663388;
     g.moveTo(tx, ty)
       .lineTo(rx, ry)
       .lineTo(bx, by)
       .lineTo(lx, ly)
       .closePath()
       .stroke({
-        width: (3.4 + glow * 2.4) * sc,
-        color: neon,
-        alpha: 0.42 + glow * 0.45
+        width: 1.05 * sc,
+        color: edge,
+        alpha: Math.max(0.04, 0.18 * (1 - depthFade * 0.65))
       });
+  }
+
+  if (neonPick && !broken) {
+    const neon = lane === "left" ? 0x55eeff : 0xe070ff;
+    g.moveTo(tx, ty)
+      .lineTo(rx, ry)
+      .lineTo(bx, by)
+      .lineTo(lx, ly)
+      .closePath()
+      .stroke({
+        width: (2.8 + glow * 3.2) * sc,
+        color: neon,
+        alpha: 0.38 + glow * 0.48
+      });
+    g.moveTo(tx, ty)
+      .lineTo(rx, ry)
+      .lineTo(bx, by)
+      .lineTo(lx, ly)
+      .closePath()
+      .stroke({
+        width: (5.5 + glow * 4) * sc,
+        color: neon,
+        alpha: 0.12 + glow * 0.15
+      });
+  }
+
+  if (!broken && D > 8 * sc) {
+    const mx = cx;
+    g.moveTo(mx - fwBot * 0.35, fy0 + 2 * sc)
+      .lineTo(mx - fwBot * 0.45, fy1 - 4 * sc)
+      .stroke({ width: 1.1 * sc, color: 0x000000, alpha: 0.28 * bodyA });
+    g.moveTo(mx + fwBot * 0.35, fy0 + 2 * sc)
+      .lineTo(mx + fwBot * 0.45, fy1 - 4 * sc)
+      .stroke({ width: 1.1 * sc, color: 0x000000, alpha: 0.28 * bodyA });
   }
 }
 

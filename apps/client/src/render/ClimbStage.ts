@@ -49,25 +49,31 @@ export class ClimbStage {
   private readonly hudSpine = new Graphics();
   private readonly pickLayer = new Container();
   private readonly pickSlots: { wrap: Container; hit: Graphics; cap: Text }[] = [];
-  private readonly pickHint: Text;
-  private readonly pickHintBg = new Graphics();
+  private readonly vignette = new Graphics();
 
   private onPickPathHandler: ((path: Side[]) => void) | null = null;
   private pulsePhase = 0;
   private hudRef: PickHighlights | null = null;
   private activePickCount = 0;
+  /** onTick 네온 색 — 픽 타일별 좌측 여부 */
+  private pickIsLeft: boolean[] = [];
 
   private readonly leftTint = 0x6aa6ff;
   private readonly rightTint = 0xff8f6a;
 
   constructor(private readonly app: Application) {
-    this.title = new Text({ text: "", style: { fill: 0xf2f5ff, fontSize: 18, fontWeight: "600" } });
+    this.title = new Text({
+      text: "",
+      style: { fill: 0x8899aa, fontSize: 11, fontWeight: "600", letterSpacing: 0.5 }
+    });
     this.stats = new Text({
       text: "",
-      style: { fill: 0xc8d2f5, fontSize: 13, lineHeight: 18 }
+      style: { fill: 0x556070, fontSize: 9, lineHeight: 12 }
     });
-    this.title.position.set(16, 16);
-    this.stats.position.set(16, 48);
+    this.title.position.set(14, 10);
+    this.stats.position.set(14, 26);
+    this.title.alpha = 0.58;
+    this.stats.alpha = 0.45;
 
     this.leftCap.anchor.set(0.5, 1.35);
     this.leftCap.position.set(0, -8);
@@ -100,25 +106,10 @@ export class ClimbStage {
     this.towerView = new TowerWorldView(app);
     this.hudSpine.zIndex = 100;
     this.pickLayer.zIndex = 60;
-    this.pickHint = new Text({
-      text: "다음 발판을 선택하세요",
-      style: {
-        fill: 0xf3f6ff,
-        fontSize: 15,
-        fontWeight: "700",
-        align: "center",
-        stroke: { color: 0x000000, width: 5 }
-      }
-    });
-    this.pickHint.anchor.set(0.5, 1);
-    this.pickHint.visible = false;
-    this.pickHint.zIndex = 111;
-
-    this.pickHintBg.zIndex = 108;
-    this.pickHintBg.visible = false;
+    this.vignette.eventMode = "none";
 
     this.root.sortableChildren = true;
-    this.root.addChild(this.title, this.stats, this.hudSpine, this.pickHintBg, this.pickHint);
+    this.root.addChild(this.title, this.stats, this.hudSpine, this.vignette);
     this.towerView.worldRoot.addChild(this.leftWrap, this.rightWrap, this.pickLayer);
     this.worldRootInteractiveSort();
 
@@ -170,6 +161,7 @@ export class ClimbStage {
 
     const targets = inp.pickTargets ?? [];
     this.activePickCount = Math.min(targets.length, this.pickSlots.length);
+    this.pickIsLeft = targets.slice(0, this.activePickCount).map((t) => t.side === "left");
 
     for (let i = 0; i < this.pickSlots.length; i++) {
       const slot = this.pickSlots[i]!;
@@ -189,10 +181,7 @@ export class ClimbStage {
       slot.wrap.visible = true;
       slot.hit.eventMode = "static";
       slot.hit.cursor = "pointer";
-      slot.cap.visible = true;
-      const leftPick = t.side === "left";
-      slot.cap.text = leftPick ? "LEFT\n(A)" : "RIGHT\n(B)";
-      slot.cap.style.fill = leftPick ? 0xa8f0ff : 0xeec6ff;
+      slot.cap.visible = false;
 
       const pathCopy = [...t.path];
       slot.hit.on("pointerdown", () => {
@@ -200,9 +189,6 @@ export class ClimbStage {
       });
     }
 
-    const showPickUi = this.activePickCount > 0;
-    this.pickHint.visible = showPickUi;
-    this.pickHintBg.visible = showPickUi;
   }
 
   private onTick = (): void => {
@@ -212,22 +198,15 @@ export class ClimbStage {
     const alpha = 0.2 + wobble * 0.42;
     for (let i = 0; i < this.activePickCount; i++) {
       const hit = this.pickSlots[i]!.hit;
-      const cap = this.pickSlots[i]!.cap;
-      const leftPick = cap.text.startsWith("LEFT");
+      const neon = this.pickIsLeft[i] ? 0x33bbee : 0xbb55ee;
       const hitW = ISO_TOP_HW * 2 + 36;
       const hitH = ISO_TOP_HV * 2 + ISO_FRONT_DEPTH + 32;
       hit.clear();
-      hit.roundRect(-hitW / 2, -ISO_TOP_HV - 14, hitW, hitH, 14).fill({ color: 0xffffff, alpha: 0.03 });
-      const neon = leftPick ? 0x44ccff : 0xcc66ff;
-      hit.roundRect(-hitW / 2 - 4 - wobble * 2, -ISO_TOP_HV - 18 - wobble * 2, hitW + 8 + wobble * 4, hitH + 12 + wobble * 4, 16).stroke({
-        width: 2.6,
+      hit.roundRect(-hitW / 2, -ISO_TOP_HV - 14, hitW, hitH, 14).fill({ color: 0x000000, alpha: 0.001 });
+      hit.roundRect(-hitW / 2 - 3 - wobble * 1.5, -ISO_TOP_HV - 16 - wobble * 1.5, hitW + 6 + wobble * 3, hitH + 10 + wobble * 3, 14).stroke({
+        width: 1.8,
         color: neon,
-        alpha
-      });
-      hit.roundRect(-hitW / 2 - 7 - wobble * 2, -ISO_TOP_HV - 21 - wobble * 2, hitW + 14 + wobble * 4, hitH + 18 + wobble * 4, 18).stroke({
-        width: 1.2,
-        color: 0xffffff,
-        alpha: alpha * 0.35
+        alpha: 0.22 + wobble * 0.2
       });
     }
     this.drawHighlightRing(this.leftGlow, this.hudRef.leftEnabled);
@@ -254,15 +233,14 @@ export class ClimbStage {
     this.worldW = width;
     this.worldH = height;
     this.hudSpine.clear();
-    const cx = width * 0.5;
-    this.hudSpine.moveTo(cx, 0).lineTo(cx, height).stroke({ width: 1.4, color: 0xfff7ff, alpha: 0.14 });
-    this.hudSpine.moveTo(cx, 0).lineTo(cx, height).stroke({ width: 4, color: 0xffffff, alpha: 0.04 });
 
-    const bw = Math.min(width * 0.88, 920);
-    this.pickHintBg.clear();
-    this.pickHintBg.roundRect(-bw / 2, -24, bw, 46, 12).fill({ color: 0x060812, alpha: 0.78 });
-    this.pickHintBg.position.set(cx, height - 30);
-    this.pickHint.position.set(cx, height - 22);
+    const band = Math.min(width, height) * 0.22;
+    this.vignette.clear();
+    this.vignette.rect(0, 0, width, band).fill({ color: 0x000000, alpha: 0.55 });
+    this.vignette.rect(0, height - band, width, band).fill({ color: 0x000000, alpha: 0.62 });
+    this.vignette.rect(0, 0, band, height).fill({ color: 0x000000, alpha: 0.48 });
+    this.vignette.rect(width - band, 0, band, height).fill({ color: 0x000000, alpha: 0.48 });
+    this.vignette.zIndex = 95;
   }
 
   private worldW = typeof window !== "undefined" ? window.innerWidth : 960;
@@ -275,13 +253,11 @@ export class ClimbStage {
     const wait =
       model.respawnAvailableAt > nowTs ? Math.ceil((model.respawnAvailableAt - nowTs) / 100) / 10 : 0;
     const revive = wait > 0 ? `\n⏳ 데이터 복구·부활 대기 (${wait}s)` : "";
-    this.title.text = `유리 다리 · ${model.floor} / ${CLIENT_GOAL_FLOOR}`;
+    this.title.text = `${model.floor} / ${CLIENT_GOAL_FLOOR}`;
     this.stats.text = [
-      `실패 에너지: ${model.failEnergy.toFixed(1)}`,
-      `점프 층수: ${model.jumpPower} · 속도: ${model.moveSpeed.toFixed(1)}`,
-      `이번 런 피크: ${model.runPeakFloor}F · 통산 최고: ${model.bestFloorReached}F`,
-      `오라: ${model.auraTier}${win}${revive}`
-    ].join("\n");
+      `E ${model.failEnergy.toFixed(0)} · JP ${model.jumpPower} · ${model.runPeakFloor}F peak`,
+      `${model.auraTier}${win}${revive}`
+    ].join(" · ");
   }
 
   onPick(cb: (path: Side[]) => void): void {
