@@ -1,21 +1,20 @@
 import { Graphics } from "pixi.js";
 import {
-  ISO_FRONT_DEPTH,
-  ISO_SIDE_DEPTH_X,
-  ISO_SIDE_DEPTH_Y,
-  ISO_TOP_HW,
-  ISO_TOP_HV,
+  SLAB_HALF_WIDTH,
+  SLAB_LIP_DEPTH,
+  SLAB_TOP_THICK,
   type ScrollSide
 } from "./sidescrollLayout";
 import { blendFogColor } from "./towerLayout";
 
-const BRIDGE_TOP_BASE = 0x4488ff;
-const BRIDGE_SIDE_BASE = 0x224488;
-const BRIDGE_FRONT_BASE = 0x112244;
-const LANE_PINK = 0xff99cc;
-
 /** ClimbStage 픽 박스 호환 */
-export const ISO_EXT_FRONT_Y = ISO_FRONT_DEPTH;
+export const ISO_EXT_FRONT_Y = SLAB_LIP_DEPTH;
+
+/** Gunmetal / 콘크리트 베이스 */
+const TOP_METAL_L = 0x4a5568;
+const TOP_METAL_R = 0x585068;
+const LIP_DARK = 0x1e2329;
+const SIDE_DIM = 0x2a323c;
 
 function mixRgb(a: number, b: number, t: number): number {
   if (t <= 0) return a;
@@ -48,10 +47,10 @@ function fillQuad(
 }
 
 /**
- * 하단 시점 입체 블록: 윗면(발판) → 좌우 얇은 옆면 → 두꺼운 앞면(유저 시선).
- * (+Y는 화면 아래 = 카메라 쪽)
+ * 공중 평판 슬래브 — **마름모/보석 형태 없음**.
+ * 원근 사다리꼴 윗면 + 얇은 전면 립만 (실제 플랫폼).
  */
-export function drawBridgeVerticalBlock(
+export function drawFloatingSlab(
   g: Graphics,
   cx: number,
   cy: number,
@@ -62,123 +61,145 @@ export function drawBridgeVerticalBlock(
     lane: ScrollSide;
     scale?: number;
     neonPick?: boolean;
-    /** 0=가까움, 1=멀리·어둠에 잠김 */
     depthFade?: number;
   }
 ): void {
   const { fog, broken, glow, lane, neonPick = false } = opts;
   const sc = opts.scale ?? 1;
   const depthFade = opts.depthFade ?? 0;
-  const laneMix = lane === "right" ? 0.22 : 0;
+  const laneT = lane === "right" ? 1 : 0;
 
-  let topC = mixRgb(BRIDGE_TOP_BASE, LANE_PINK, laneMix);
-  let sideC = mixRgb(BRIDGE_SIDE_BASE, LANE_PINK, laneMix * 0.55);
-  let frontC = mixRgb(BRIDGE_FRONT_BASE, LANE_PINK, laneMix * 0.45);
+  let topBase = mixRgb(TOP_METAL_L, TOP_METAL_R, laneT * 0.35);
+  let lipC = LIP_DARK;
+  let sideC = SIDE_DIM;
 
   if (broken) {
-    const d = Math.min(1, fog + 0.38);
-    topC = blendFogColor(0x3a4a5c, d);
-    sideC = blendFogColor(0x243448, d);
-    frontC = blendFogColor(0x152030, d);
+    const d = Math.min(1, fog + 0.42);
+    topBase = blendFogColor(0x353d48, d);
+    lipC = blendFogColor(0x151820, d);
+    sideC = blendFogColor(0x202830, d);
   } else {
-    topC = blendFogColor(topC, fog);
+    topBase = blendFogColor(topBase, fog * 0.85);
+    lipC = blendFogColor(lipC, fog);
     sideC = blendFogColor(sideC, fog);
-    frontC = blendFogColor(frontC, fog);
   }
 
-  const hw = ISO_TOP_HW * sc;
-  const hv = ISO_TOP_HV * sc;
-  const tx = cx;
-  const ty = cy - hv;
-  const rx = cx + hw;
-  const ry = cy;
-  const bx = cx;
-  const by = cy + hv;
-  const lx = cx - hw;
-  const ly = cy;
+  const hwNear = SLAB_HALF_WIDTH * sc;
+  const hwFar = hwNear * (0.5 + 0.08 * (1 - depthFade));
+  const yBack = cy - SLAB_TOP_THICK * sc * 0.85;
+  const yFront = cy + SLAB_TOP_THICK * sc * 0.95;
 
-  const sdx = ISO_SIDE_DEPTH_X * sc;
-  const sdy = ISO_SIDE_DEPTH_Y * sc;
-  const D = ISO_FRONT_DEPTH * sc;
+  const bodyA = Math.max(0.2, 1 - depthFade * 0.62);
+  const nearBright = (1 - depthFade * 0.55) * (neonPick ? 1.15 : 1);
 
-  const bodyA = Math.max(0.25, 1 - depthFade * 0.55);
-  fillQuad(g, lx, ly, tx, ty, tx - sdx, ty + sdy, lx - sdx * 0.85, ly + sdy * 0.92, { color: sideC, alpha: bodyA });
-  fillQuad(g, tx, ty, rx, ry, rx + sdx * 0.85, ry + sdy * 0.92, tx + sdx, ty + sdy, { color: sideC, alpha: bodyA });
+  const topAlpha = broken
+    ? 0.36 * bodyA
+    : Math.max(0.08, (0.42 + glow * 0.22) * bodyA * nearBright);
 
-  const fwTop = hw + 10 * sc;
-  const fwBot = hw * 0.72;
-  const fy0 = by - 4 * sc;
-  const fy1 = by + D;
+  /** 윗면 — 넓은 사다리꼴 (멀리 가장자리 좁음 = 깊이) */
+  g.moveTo(cx - hwFar, yBack)
+    .lineTo(cx + hwFar, yBack)
+    .lineTo(cx + hwNear, yFront)
+    .lineTo(cx - hwNear, yFront)
+    .closePath()
+    .fill({ color: topBase, alpha: topAlpha });
+
+  /** 전면 립 — 얇은 가로대만 (두께 얇게) */
+  const lip = SLAB_LIP_DEPTH * sc * Math.max(0.55, 1 - depthFade * 0.35);
+  const lipTop = yFront;
+  const lipBot = yFront + lip;
+
   fillQuad(
     g,
-    cx - fwTop,
-    fy0,
-    cx + fwTop,
-    fy0,
-    cx + fwBot,
-    fy1,
-    cx - fwBot,
-    fy1,
-    { color: frontC, alpha: bodyA }
+    cx - hwNear,
+    lipTop,
+    cx + hwNear,
+    lipTop,
+    cx + hwNear * 0.92,
+    lipBot,
+    cx - hwNear * 0.92,
+    lipBot,
+    { color: lipC, alpha: bodyA * 0.95 }
   );
 
-  const topAlphaBase = broken ? 0.38 : 0.26 + glow * 0.28;
-  const topAlpha = Math.max(0.06, topAlphaBase * (1 - depthFade * 0.75));
-  g.moveTo(tx, ty).lineTo(rx, ry).lineTo(bx, by).lineTo(lx, ly).closePath().fill({ color: topC, alpha: topAlpha });
+  const edgeW = Math.max(5, 7 * sc);
+  fillQuad(
+    g,
+    cx - hwNear,
+    lipTop,
+    cx - hwNear + edgeW,
+    lipTop,
+    cx - hwNear + edgeW * 0.85,
+    lipBot,
+    cx - hwNear,
+    lipBot,
+    { color: sideC, alpha: bodyA * 0.5 }
+  );
+  fillQuad(
+    g,
+    cx + hwNear - edgeW,
+    lipTop,
+    cx + hwNear,
+    lipTop,
+    cx + hwNear,
+    lipBot,
+    cx + hwNear - edgeW * 0.85,
+    lipBot,
+    { color: sideC, alpha: bodyA * 0.5 }
+  );
+
+  /** 상단 하이라이트 라인 (금속 모서리) */
+  g.moveTo(cx - hwFar, yBack)
+    .lineTo(cx + hwFar, yBack)
+    .stroke({
+      width: Math.max(0.8, 1.2 * sc),
+      color: 0x8899aa,
+      alpha: Math.max(0.06, 0.14 * (1 - depthFade * 0.7)) * bodyA
+    });
 
   if (!broken && !neonPick) {
-    const edge = lane === "left" ? 0x2a6a88 : 0x663388;
-    g.moveTo(tx, ty)
-      .lineTo(rx, ry)
-      .lineTo(bx, by)
-      .lineTo(lx, ly)
+    const edge = lane === "left" ? 0x335566 : 0x554466;
+    g.moveTo(cx - hwFar, yBack)
+      .lineTo(cx + hwFar, yBack)
+      .lineTo(cx + hwNear, yFront)
+      .lineTo(cx - hwNear, yFront)
       .closePath()
       .stroke({
-        width: 1.05 * sc,
+        width: Math.max(0.7, 1.0 * sc),
         color: edge,
-        alpha: Math.max(0.04, 0.18 * (1 - depthFade * 0.65))
+        alpha: Math.max(0.05, 0.12 * (1 - depthFade * 0.55))
       });
   }
 
   if (neonPick && !broken) {
-    const neon = lane === "left" ? 0x55eeff : 0xe070ff;
-    g.moveTo(tx, ty)
-      .lineTo(rx, ry)
-      .lineTo(bx, by)
-      .lineTo(lx, ly)
+    const neon = lane === "left" ? 0x44ddff : 0xdd77ff;
+    g.moveTo(cx - hwFar, yBack)
+      .lineTo(cx + hwFar, yBack)
+      .lineTo(cx + hwNear, yFront)
+      .lineTo(cx - hwNear, yFront)
       .closePath()
       .stroke({
-        width: (2.8 + glow * 3.2) * sc,
+        width: (2.2 + glow * 2.8) * sc,
         color: neon,
-        alpha: 0.38 + glow * 0.48
+        alpha: 0.35 + glow * 0.42
       });
-    g.moveTo(tx, ty)
-      .lineTo(rx, ry)
-      .lineTo(bx, by)
-      .lineTo(lx, ly)
+    g.moveTo(cx - hwFar, yBack)
+      .lineTo(cx + hwFar, yBack)
+      .lineTo(cx + hwNear, yFront)
+      .lineTo(cx - hwNear, yFront)
       .closePath()
       .stroke({
-        width: (5.5 + glow * 4) * sc,
+        width: (5 + glow * 4) * sc,
         color: neon,
-        alpha: 0.12 + glow * 0.15
+        alpha: 0.1 + glow * 0.12
       });
-  }
-
-  if (!broken && D > 8 * sc) {
-    const mx = cx;
-    g.moveTo(mx - fwBot * 0.35, fy0 + 2 * sc)
-      .lineTo(mx - fwBot * 0.45, fy1 - 4 * sc)
-      .stroke({ width: 1.1 * sc, color: 0x000000, alpha: 0.28 * bodyA });
-    g.moveTo(mx + fwBot * 0.35, fy0 + 2 * sc)
-      .lineTo(mx + fwBot * 0.45, fy1 - 4 * sc)
-      .stroke({ width: 1.1 * sc, color: 0x000000, alpha: 0.28 * bodyA });
   }
 }
 
-/** @deprecated 호환용 — 세로 블록 사용 */
-export const drawBridgeIsoBlock = drawBridgeVerticalBlock;
+/** 호환: 기존 이름 → 평판 슬래브 */
+export const drawBridgeVerticalBlock = drawFloatingSlab;
+export const drawBridgeIsoBlock = drawFloatingSlab;
 
-/** 이전 메인 화면용 큐브 (픽존 UI 보조). */
 export function drawIsoGlassPane(
   g: Graphics,
   cx: number,
@@ -188,26 +209,14 @@ export function drawIsoGlassPane(
   opts: { glow?: number }
 ): void {
   const glow = opts.glow ?? 0;
-  const w = 44 * scale;
-  const skew = 20 * scale;
-  const hb = 8 * scale;
-  const ht = 15 * scale;
-  const a = 0.28 + glow * 0.34;
-  const p0x = cx - w * 0.5 + skew;
-  const p0y = cy - ht;
-  const p1x = cx + w * 0.5 + skew * 1.06;
-  const p1y = cy - ht * 0.88;
-  const p2x = cx + w * 0.45 - skew * 0.35;
-  const p2y = cy + hb;
-  const p3x = cx - w * 0.45 - skew * 1.02;
-  const p3y = cy + hb * 0.88;
-  g.moveTo(p0x, p0y)
-    .lineTo(p1x, p1y)
-    .lineTo(p2x, p2y)
-    .lineTo(p3x, p3y)
-    .closePath()
-    .fill({ color: tint, alpha: a })
-    .stroke({ width: 1.1 + glow * 2.4, color: 0xffffff, alpha: 0.18 + glow * 0.55 });
+  const w = 52 * scale;
+  const h = 96 * scale;
+  const a = 0.28 + glow * 0.28;
+  g.roundRect(cx - w / 2, cy - h / 2, w, h, 6).fill({ color: tint, alpha: a }).stroke({
+    width: 1.2 + glow * 2,
+    color: 0xffffff,
+    alpha: 0.15 + glow * 0.35
+  });
 }
 
 export function drawGlassShards(g: Graphics, cx: number, cy: number, scale: number, seed: number, brokenPulse: number): void {
@@ -218,7 +227,7 @@ export function drawGlassShards(g: Graphics, cx: number, cy: number, scale: numb
     const ox = Math.cos(ang) * 6 * scale + Math.sin(seed + i * 13) * 2;
     const oy = Math.sin(ang) * 4 * scale;
     g.ellipse(cx + ox, cy + oy, rx * 0.7, ry * 0.5).fill({
-      color: 0xffffff,
+      color: 0xaabbcc,
       alpha: 0.07 + brokenPulse * 0.1 + i * 0.02
     });
   }
@@ -235,7 +244,6 @@ export function drawCrackBurst(g: Graphics, cx: number, cy: number, scale: numbe
   }
 }
 
-/** 2D 사이드뷰 유리 판. */
 export function drawSideGlassSlab(
   g: Graphics,
   cx: number,
@@ -246,10 +254,10 @@ export function drawSideGlassSlab(
   opts: { glow?: number }
 ): void {
   const glow = opts.glow ?? 0;
-  const a = 0.31 + glow * 0.4;
-  g.roundRect(cx - w / 2, cy - hTot / 2, w, hTot, Math.min(w, hTot) * 0.38)
+  const a = 0.31 + glow * 0.35;
+  g.roundRect(cx - w / 2, cy - hTot / 2, w, hTot, 8)
     .fill({ color: tintRaw >>> 0, alpha: a })
-    .stroke({ width: 1.2 + glow * 4, color: 0xffffff, alpha: 0.2 + glow * 0.78 });
+    .stroke({ width: 1.2 + glow * 3, color: 0xffffff, alpha: 0.15 + glow * 0.45 });
 }
 
 export function drawSideGlassShards(g: Graphics, cx: number, cy: number, w: number, seed: number): void {

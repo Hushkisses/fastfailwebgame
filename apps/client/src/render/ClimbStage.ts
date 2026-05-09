@@ -64,15 +64,22 @@ export class ClimbStage {
   constructor(private readonly app: Application) {
     this.title = new Text({
       text: "",
-      style: { fill: 0x8899aa, fontSize: 11, fontWeight: "600", letterSpacing: 0.5 }
+      style: {
+        fill: 0xd8e4f0,
+        fontSize: 15,
+        fontWeight: "700",
+        letterSpacing: 0.4,
+        lineHeight: 20,
+        stroke: { color: 0x000000, width: 5 }
+      }
     });
     this.stats = new Text({
       text: "",
-      style: { fill: 0x556070, fontSize: 9, lineHeight: 12 }
+      style: { fill: 0x6a7588, fontSize: 10, lineHeight: 14 }
     });
-    this.title.position.set(14, 10);
-    this.stats.position.set(14, 26);
-    this.title.alpha = 0.58;
+    this.title.position.set(16, 14);
+    this.stats.position.set(16, 56);
+    this.title.alpha = 0.92;
     this.stats.alpha = 0.45;
 
     this.leftCap.anchor.set(0.5, 1.35);
@@ -132,7 +139,7 @@ export class ClimbStage {
         }
       });
       cap.anchor.set(0.5, 1);
-      cap.position.set(0, -ISO_TOP_HV - 26);
+      cap.position.set(0, -ISO_TOP_HV - ISO_FRONT_DEPTH - 18);
       wrap.addChild(hit, cap);
       wrap.visible = false;
       this.pickLayer.addChild(wrap);
@@ -253,11 +260,11 @@ export class ClimbStage {
     const wait =
       model.respawnAvailableAt > nowTs ? Math.ceil((model.respawnAvailableAt - nowTs) / 100) / 10 : 0;
     const revive = wait > 0 ? `\n⏳ 데이터 복구·부활 대기 (${wait}s)` : "";
-    this.title.text = `${model.floor} / ${CLIENT_GOAL_FLOOR}`;
+    this.title.text = `현재  ${model.floor}층\n목표  ${CLIENT_GOAL_FLOOR}층`;
     this.stats.text = [
-      `E ${model.failEnergy.toFixed(0)} · JP ${model.jumpPower} · ${model.runPeakFloor}F peak`,
-      `${model.auraTier}${win}${revive}`
-    ].join(" · ");
+      `실패에너지 ${model.failEnergy.toFixed(1)} · 점프 ${model.jumpPower} · 속도 ${model.moveSpeed.toFixed(1)}`,
+      `피크 ${model.runPeakFloor}F · 오라 ${model.auraTier}${win}${revive}`
+    ].join("\n");
   }
 
   onPick(cb: (path: Side[]) => void): void {

@@ -2,7 +2,7 @@ import { Application, Container, Graphics, Text } from "pixi.js";
 import { CLIENT_GOAL_FLOOR } from "../config/climbConfig";
 import type { HintFlash } from "../hint/collectHints";
 import type { PickTarget } from "../logic/pickPath";
-import { drawBridgeVerticalBlock, drawCrackBurst, drawSideGlassShards } from "./drawGlass";
+import { drawFloatingSlab, drawCrackBurst, drawSideGlassShards } from "./drawGlass";
 import {
   BRIDGE_MARGIN,
   floorWorldY,
@@ -144,7 +144,7 @@ export class TowerWorldView {
     const view = avatarWorldPos(inp.selfFloor, inp.selfSide, inp.selfFloor);
 
     const desiredCamX = inp.screenW * 0.5 - view.x;
-    const desiredCamY = inp.screenH * 0.83 - view.y;
+    const desiredCamY = inp.screenH * 0.88 - view.y;
 
     if (!Number.isFinite(this.camTX)) this.camTX = desiredCamX;
     else this.camTX += (desiredCamX - this.camTX) * this.camLerp;
@@ -266,7 +266,7 @@ export class TowerWorldView {
         const ahead = c - inp.selfFloor;
         const depthFade = Math.min(1, Math.max(0, ahead * 0.065 + fog * 0.35));
 
-        drawBridgeVerticalBlock(this.paneG, loc.x, loc.y, {
+        drawFloatingSlab(this.paneG, loc.x, loc.y, {
           fog,
           broken,
           lane,

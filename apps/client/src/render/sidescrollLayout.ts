@@ -3,52 +3,52 @@ import { blendFogColor } from "./towerLayout";
 
 export type ScrollSide = "left" | "right";
 
-/** 화면 중앙 기준 좌·우 레인 X 오프셋 — 바로 앞 두 개의 큰 발판 간격 */
-export const LANE_OFFSET_X = 118;
+/** 좌·우 통로 폭 — 두 개의 큰 슬래브가 나란히 */
+export const LANE_OFFSET_X = 132;
 
-/**
- * 층 간 세로 간격(월드). 값이 클수록 타일이 더 뜨고 낙하 깊이감이 커짐.
- */
-export const TILE_VERTICAL_GAP = 148;
+/** 층 간 세로 간격(월드) */
+export const TILE_VERTICAL_GAP = 152;
 
-/** 레일·보이드 여백 */
 export const BRIDGE_MARGIN = 140;
 
-/** 입체 타일 — 윗면(발판) 반가로 (1인칭에 가깝게 크게) */
-export const ISO_TOP_HW = 52;
-/** 입체 타일 — 윗면 반세로 */
-export const ISO_TOP_HV = 20;
+/**
+ * 평판 슬래브 — 가까운 쪽(관측자) 가로 반폭 (월드 단위).
+ * 세로로 긴 마름모형 대신 **가로로 넓은 직사각형** 느낌의 기준치.
+ */
+export const SLAB_HALF_WIDTH = 108;
 
-/** 유저를 향하는 앞면 두께 — 직사각형 슬랩 느낌 */
-export const ISO_FRONT_DEPTH = 54;
+/** 윗면이 화면에서 차지하는 얇은 두께(원근 박스 높이) */
+export const SLAB_TOP_THICK = 7;
 
-/** 좌우 얇은 옆면 깊이 보정 */
-export const ISO_SIDE_DEPTH_X = 12;
-export const ISO_SIDE_DEPTH_Y = 22;
+/** 카메라 쪽으로 보이는 얇은 앞 립 두께 (물리적으로 얇은 발판) */
+export const SLAB_LIP_DEPTH = 12;
 
-/** 픽/히트 영역 추정 */
-export const GLASS_HALF_W = ISO_TOP_HW + 6;
-export const GLASS_HALF_H = ISO_TOP_HV + ISO_FRONT_DEPTH;
+/** 픽/히트 박스용 (구 ISO 호환 이름) */
+export const ISO_TOP_HW = SLAB_HALF_WIDTH;
+export const ISO_TOP_HV = SLAB_TOP_THICK;
+export const ISO_FRONT_DEPTH = SLAB_LIP_DEPTH;
+export const ISO_SIDE_DEPTH_X = 6;
+export const ISO_SIDE_DEPTH_Y = 5;
 
-/** 하위 호환: 예전 가로 간격 필드명 → 세로 간격 */
+export const GLASS_HALF_W = SLAB_HALF_WIDTH + 8;
+export const GLASS_HALF_H = SLAB_TOP_THICK + SLAB_LIP_DEPTH + 4;
+
 export const TILE_GAP = TILE_VERTICAL_GAP;
 
-/** 낙하 연출 목표(심연 방향). floor 1보다 화면 아래(+Y)로 충분히 */
-export const ABYSS_EXTRA_Y = 280;
+export const ABYSS_EXTRA_Y = 300;
 
 export function floorWorldY(floor: number): number {
   return -(Math.max(1, floor) - 1) * TILE_VERTICAL_GAP;
 }
 
-/** 멀리 갈수록 작아져 어둠 속으로 사라지는 원근 (깊은 소실) */
+/** 멀수록 작아지는 기본 원근 */
 export function tilePerspectiveScale(tileFloor: number, viewerFloor: number): number {
   const d = tileFloor - viewerFloor;
-  if (d <= 0) return Math.min(1.14, 1.06 - d * 0.01);
-  const inv = 1 / (1 + d * 0.112);
-  return Math.max(0.16, inv);
+  if (d <= 0) return Math.min(1.12, 1.04 - d * 0.012);
+  const inv = 1 / (1 + d * 0.125);
+  return Math.max(0.12, inv);
 }
 
-/** 원근 적용 월드 좌표 + 타일 스케일 (멀수록 통로 중앙으로 수렴) */
 export function tileWorldPos(
   floor: number,
   side: ScrollSide,
@@ -56,12 +56,13 @@ export function tileWorldPos(
 ): { x: number; y: number; scale: number } {
   let scale = tilePerspectiveScale(floor, viewerFloor);
   const d = floor - viewerFloor;
-  /** 바로 다음 줄 선택지는 화면을 많이 채우도록 약간 확대 */
-  if (d === 1) scale *= 1.22;
-  else if (d === 2) scale *= 1.06;
+  /** 바로 앞 선택 한 줄 — 화면을 크게 채움 (좌·우 압박) */
+  if (d === 1) scale *= 1.72;
+  else if (d === 2) scale *= 1.12;
+  else if (d >= 8) scale *= 0.92;
 
   const laneBase = side === "left" ? -LANE_OFFSET_X : LANE_OFFSET_X;
-  const converge = 0.38 + 0.62 * Math.min(1, scale * 1.15);
+  const converge = 0.32 + 0.68 * Math.min(1, scale * 1.05);
   return {
     x: laneBase * converge,
     y: floorWorldY(floor),
@@ -69,13 +70,11 @@ export function tileWorldPos(
   };
 }
 
-/** 원근 없는 기하 중심 (레거시·히트 추정 보조) */
 export function tileWorldCenter(floor: number, side: ScrollSide): { x: number; y: number } {
   const x = side === "left" ? -LANE_OFFSET_X : LANE_OFFSET_X;
   return { x, y: floorWorldY(floor) };
 }
 
-/** 타일 위 캐릭터 앵커 — 시점 기준 원근 좌표 */
 export function avatarWorldPos(floor: number, side: ScrollSide, viewerFloor: number): { x: number; y: number } {
   const p = tileWorldPos(floor, side, viewerFloor);
   return { x: p.x, y: p.y };
