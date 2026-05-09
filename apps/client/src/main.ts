@@ -184,7 +184,8 @@ async function startSession(nickname: string, mode: "multi" | "solo" = "multi"):
       rightEnabled: pickTargets.length > 0
     });
 
-    const pickGlowKeys = pickTargets.map((t) => trapRevealKeyClient(t.floor, t.side));
+    /** 글로우는 "착지 발판"(t.floor + 1)에 표시 — 사용자가 보고 누를 발판이 빛남 */
+    const pickGlowKeys = pickTargets.map((t) => trapRevealKeyClient(t.floor + 1, t.side));
 
     const ghosts: GhostPlayerMini[] = [];
     stateAny().players?.forEach((p: unknown, id: string) => {

@@ -193,7 +193,12 @@ export class ClimbStage {
       }
 
       const t = targets[i]!;
-      const tw = tileWorldPos(t.floor, t.side, inp.selfFloor);
+      /**
+       * 시각 위치는 "착지 발판"(t.floor + 1)에 놓는다.
+       * 데이터(path)는 출발층 기준이지만, 사용자가 누르는 손가락은 "다음에 밟을 발판"을 향함.
+       */
+      const landingFloor = t.floor + 1;
+      const tw = tileWorldPos(landingFloor, t.side, inp.selfFloor);
       slot.wrap.position.set(tw.x, tw.y);
       slot.wrap.scale.set(tw.scale);
       slot.wrap.visible = true;
