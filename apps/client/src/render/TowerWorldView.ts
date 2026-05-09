@@ -143,7 +143,11 @@ export class TowerWorldView {
     const { lo, hi } = visibleColumnBand(inp.selfFloor);
     const view = avatarWorldPos(inp.selfFloor, inp.selfSide, inp.selfFloor);
 
-    const desiredCamX = inp.screenW * 0.5 - view.x;
+    /**
+     * 카메라 X — 월드 x=0 고정. 좌·우 선택에 따라 화면이 이동하지 않음.
+     * 두 발판은 항상 화면 중앙 기준으로 대칭 배치됨.
+     */
+    const desiredCamX = inp.screenW * 0.5;
     /** 낮은 시점 — 플레이어가 발판 앞에 서서 위·앞을 올려보는 느낌 */
     const desiredCamY = inp.screenH * 0.91 - view.y;
 

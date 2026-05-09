@@ -56,10 +56,13 @@ export function tileWorldPos(
 ): { x: number; y: number; scale: number } {
   let scale = tilePerspectiveScale(floor, viewerFloor);
   const d = floor - viewerFloor;
-  /** 바로 앞 선택 한 줄 — 화면을 거의 메우는 두꺼운 발판 (좌·우 압박) */
-  if (d === 1) scale *= 1.92;
-  else if (d === 2) scale *= 1.22;
-  else if (d >= 8) scale *= 0.82;
+  /**
+   * 핵심: 지금 당장 선택해야 하는 d=1 발판이 압도적으로 큼.
+   * 그 다음 줄(d=2)은 확실히 작게 — 시각적 우선순위로 즉시 선택을 유도.
+   */
+  if (d === 1) scale *= 2.05;
+  else if (d === 2) scale *= 0.88;
+  else if (d >= 5) scale *= 0.78;
 
   const laneBase = side === "left" ? -LANE_OFFSET_X : LANE_OFFSET_X;
   const converge = 0.34 + 0.66 * Math.min(1, scale * 1.05);
