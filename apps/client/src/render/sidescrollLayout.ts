@@ -40,15 +40,39 @@ export function floorWorldY(floor: number): number {
   return -(Math.max(1, floor) - 1) * TILE_VERTICAL_GAP;
 }
 
-/** 픽/깨짐: 해당 층·레인 타일 윗면 중심 */
+/** 멀리 있는 층일수록 작아지는 원근 스케일 (1 = 플레이어와 같은 열) */
+export function tilePerspectiveScale(tileFloor: number, viewerFloor: number): number {
+  const d = tileFloor - viewerFloor;
+  if (d <= 0) return Math.min(1.06, 1 - d * 0.004);
+  return Math.max(0.52, 1 - d * 0.012);
+}
+
+/** 원근 적용 월드 좌표 + 타일 스케일 (좌우 레인이 원점 쪽으로 살짝 수렴) */
+export function tileWorldPos(
+  floor: number,
+  side: ScrollSide,
+  viewerFloor: number
+): { x: number; y: number; scale: number } {
+  const scale = tilePerspectiveScale(floor, viewerFloor);
+  const laneBase = side === "left" ? -LANE_OFFSET_X : LANE_OFFSET_X;
+  const converge = 0.78 + 0.22 * scale;
+  return {
+    x: laneBase * converge,
+    y: floorWorldY(floor),
+    scale
+  };
+}
+
+/** 원근 없는 기하 중심 (레거시·히트 추정 보조) */
 export function tileWorldCenter(floor: number, side: ScrollSide): { x: number; y: number } {
   const x = side === "left" ? -LANE_OFFSET_X : LANE_OFFSET_X;
   return { x, y: floorWorldY(floor) };
 }
 
-/** 타일 윗면 중심 — 캐릭터 앵커 */
-export function avatarWorldPos(floor: number, side: ScrollSide): { x: number; y: number } {
-  return tileWorldCenter(floor, side);
+/** 타일 위 캐릭터 앵커 — 시점 기준 원근 좌표 */
+export function avatarWorldPos(floor: number, side: ScrollSide, viewerFloor: number): { x: number; y: number } {
+  const p = tileWorldPos(floor, side, viewerFloor);
+  return { x: p.x, y: p.y };
 }
 
 export function fallTargetStartWorld(): { x: number; y: number } {

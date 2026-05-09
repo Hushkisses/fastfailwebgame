@@ -2,7 +2,7 @@ import { Application, Container, Graphics, Text } from "pixi.js";
 import { CLIENT_GOAL_FLOOR } from "../config/climbConfig";
 import type { PickTarget, Side } from "../logic/pickPath";
 import { drawSideGlassSlab } from "./drawGlass";
-import { ISO_FRONT_DEPTH, ISO_TOP_HW, ISO_TOP_HV, tileWorldCenter } from "./sidescrollLayout";
+import { ISO_FRONT_DEPTH, ISO_TOP_HW, ISO_TOP_HV, tileWorldPos } from "./sidescrollLayout";
 import { TowerWorldView, type TowerSyncInput } from "./TowerWorldView";
 
 export type { GhostPlayerMini, TowerSyncInput } from "./TowerWorldView";
@@ -48,7 +48,9 @@ export class ClimbStage {
   private readonly rightCap = new Text({ text: "R", style: { fill: 0xffffff, fontSize: 22, fontWeight: "700" } });
   private readonly hudSpine = new Graphics();
   private readonly pickLayer = new Container();
-  private readonly pickSlots: Graphics[] = [];
+  private readonly pickSlots: { wrap: Container; hit: Graphics; cap: Text }[] = [];
+  private readonly pickHint: Text;
+  private readonly pickHintBg = new Graphics();
 
   private onPickPathHandler: ((path: Side[]) => void) | null = null;
   private pulsePhase = 0;
@@ -98,19 +100,52 @@ export class ClimbStage {
     this.towerView = new TowerWorldView(app);
     this.hudSpine.zIndex = 100;
     this.pickLayer.zIndex = 60;
+    this.pickHint = new Text({
+      text: "다음 발판을 선택하세요",
+      style: {
+        fill: 0xf3f6ff,
+        fontSize: 15,
+        fontWeight: "700",
+        align: "center",
+        stroke: { color: 0x000000, width: 5 }
+      }
+    });
+    this.pickHint.anchor.set(0.5, 1);
+    this.pickHint.visible = false;
+    this.pickHint.zIndex = 111;
+
+    this.pickHintBg.zIndex = 108;
+    this.pickHintBg.visible = false;
+
     this.root.sortableChildren = true;
-    this.root.addChild(this.title, this.stats, this.hudSpine);
+    this.root.addChild(this.title, this.stats, this.hudSpine, this.pickHintBg, this.pickHint);
     this.towerView.worldRoot.addChild(this.leftWrap, this.rightWrap, this.pickLayer);
     this.worldRootInteractiveSort();
 
     this.app.stage.addChild(this.towerView.worldRoot, this.root);
 
     for (let i = 0; i < MAX_PICK_SLOTS; i++) {
-      const g = new Graphics();
-      g.eventMode = "static";
-      g.visible = false;
-      this.pickLayer.addChild(g);
-      this.pickSlots.push(g);
+      const wrap = new Container();
+      const hit = new Graphics();
+      hit.eventMode = "static";
+      hit.cursor = "pointer";
+      const cap = new Text({
+        text: "",
+        style: {
+          fill: 0xffffff,
+          fontSize: 13,
+          fontWeight: "700",
+          align: "center",
+          lineHeight: 16,
+          stroke: { color: 0x050812, width: 4 }
+        }
+      });
+      cap.anchor.set(0.5, 1);
+      cap.position.set(0, -ISO_TOP_HV - 26);
+      wrap.addChild(hit, cap);
+      wrap.visible = false;
+      this.pickLayer.addChild(wrap);
+      this.pickSlots.push({ wrap, hit, cap });
     }
 
     this.layout(window.innerWidth, window.innerHeight);
@@ -137,27 +172,37 @@ export class ClimbStage {
     this.activePickCount = Math.min(targets.length, this.pickSlots.length);
 
     for (let i = 0; i < this.pickSlots.length; i++) {
-      const g = this.pickSlots[i]!;
-      g.removeAllListeners();
+      const slot = this.pickSlots[i]!;
+      slot.hit.removeAllListeners();
       if (i >= this.activePickCount) {
-        g.visible = false;
-        g.clear();
-        g.eventMode = "none";
+        slot.wrap.visible = false;
+        slot.hit.clear();
+        slot.hit.eventMode = "none";
+        slot.cap.visible = false;
         continue;
       }
 
       const t = targets[i]!;
-      const p = tileWorldCenter(t.floor, t.side);
-      g.position.set(p.x, p.y);
-      g.visible = true;
-      g.eventMode = "static";
-      g.cursor = "pointer";
+      const tw = tileWorldPos(t.floor, t.side, inp.selfFloor);
+      slot.wrap.position.set(tw.x, tw.y);
+      slot.wrap.scale.set(tw.scale);
+      slot.wrap.visible = true;
+      slot.hit.eventMode = "static";
+      slot.hit.cursor = "pointer";
+      slot.cap.visible = true;
+      const leftPick = t.side === "left";
+      slot.cap.text = leftPick ? "LEFT\n(A)" : "RIGHT\n(B)";
+      slot.cap.style.fill = leftPick ? 0xa8f0ff : 0xeec6ff;
 
       const pathCopy = [...t.path];
-      g.on("pointerdown", () => {
+      slot.hit.on("pointerdown", () => {
         if (pathCopy.length) this.onPickPathHandler?.(pathCopy);
       });
     }
+
+    const showPickUi = this.activePickCount > 0;
+    this.pickHint.visible = showPickUi;
+    this.pickHintBg.visible = showPickUi;
   }
 
   private onTick = (): void => {
@@ -166,15 +211,23 @@ export class ClimbStage {
     const wobble = (Math.sin(this.pulsePhase) + 1) * 0.5;
     const alpha = 0.2 + wobble * 0.42;
     for (let i = 0; i < this.activePickCount; i++) {
-      const g = this.pickSlots[i]!;
+      const hit = this.pickSlots[i]!.hit;
+      const cap = this.pickSlots[i]!.cap;
+      const leftPick = cap.text.startsWith("LEFT");
       const hitW = ISO_TOP_HW * 2 + 36;
       const hitH = ISO_TOP_HV * 2 + ISO_FRONT_DEPTH + 32;
-      g.clear();
-      g.roundRect(-hitW / 2, -ISO_TOP_HV - 14, hitW, hitH, 14).fill({ color: 0xffffff, alpha: 0.03 });
-      g.roundRect(-hitW / 2 - 4 - wobble * 2, -ISO_TOP_HV - 18 - wobble * 2, hitW + 8 + wobble * 4, hitH + 12 + wobble * 4, 16).stroke({
-        width: 2.2,
-        color: 0xfff8e8,
+      hit.clear();
+      hit.roundRect(-hitW / 2, -ISO_TOP_HV - 14, hitW, hitH, 14).fill({ color: 0xffffff, alpha: 0.03 });
+      const neon = leftPick ? 0x44ccff : 0xcc66ff;
+      hit.roundRect(-hitW / 2 - 4 - wobble * 2, -ISO_TOP_HV - 18 - wobble * 2, hitW + 8 + wobble * 4, hitH + 12 + wobble * 4, 16).stroke({
+        width: 2.6,
+        color: neon,
         alpha
+      });
+      hit.roundRect(-hitW / 2 - 7 - wobble * 2, -ISO_TOP_HV - 21 - wobble * 2, hitW + 14 + wobble * 4, hitH + 18 + wobble * 4, 18).stroke({
+        width: 1.2,
+        color: 0xffffff,
+        alpha: alpha * 0.35
       });
     }
     this.drawHighlightRing(this.leftGlow, this.hudRef.leftEnabled);
@@ -204,6 +257,12 @@ export class ClimbStage {
     const cx = width * 0.5;
     this.hudSpine.moveTo(cx, 0).lineTo(cx, height).stroke({ width: 1.4, color: 0xfff7ff, alpha: 0.14 });
     this.hudSpine.moveTo(cx, 0).lineTo(cx, height).stroke({ width: 4, color: 0xffffff, alpha: 0.04 });
+
+    const bw = Math.min(width * 0.88, 920);
+    this.pickHintBg.clear();
+    this.pickHintBg.roundRect(-bw / 2, -24, bw, 46, 12).fill({ color: 0x060812, alpha: 0.78 });
+    this.pickHintBg.position.set(cx, height - 30);
+    this.pickHint.position.set(cx, height - 22);
   }
 
   private worldW = typeof window !== "undefined" ? window.innerWidth : 960;

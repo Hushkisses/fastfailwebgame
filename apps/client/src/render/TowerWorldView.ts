@@ -9,11 +9,10 @@ import {
   GLASS_HALF_H,
   ISO_TOP_HW,
   ISO_TOP_HV,
-  LANE_OFFSET_X,
   avatarWorldPos,
   columnFog,
   fallTargetStartWorld,
-  tileWorldCenter,
+  tileWorldPos,
   TILE_VERTICAL_GAP,
   visibleColumnBand,
   type ScrollSide
@@ -57,6 +56,7 @@ type FallAnim = {
 /** 하단→상단 수직 진행, 카메라 수직 추적 */
 export class TowerWorldView {
   readonly worldRoot = new Container();
+  private readonly pillarG = new Graphics();
   private readonly railG = new Graphics();
   private readonly laneG = new Graphics();
   private readonly paneG = new Graphics();
@@ -76,6 +76,7 @@ export class TowerWorldView {
 
   constructor(_app: Application) {
     this.worldRoot.sortableChildren = true;
+    this.pillarG.zIndex = -2;
     this.railG.zIndex = 0;
     this.laneG.zIndex = 1;
     this.paneG.zIndex = 3;
@@ -115,7 +116,7 @@ export class TowerWorldView {
       this.worldRoot.addChild(t);
     }
 
-    this.worldRoot.addChild(this.railG, this.laneG, this.paneG, this.avatarLayer, this.hintGfx);
+    this.worldRoot.addChild(this.pillarG, this.railG, this.laneG, this.paneG, this.avatarLayer, this.hintGfx);
   }
 
   handleRemoteFall(id: string, fromFloor: number, side: TowerSide, nowMs: number = performance.now()): void {
@@ -139,7 +140,7 @@ export class TowerWorldView {
     this.broken = new Set(inp.brokenKeys);
 
     const { lo, hi } = visibleColumnBand(inp.selfFloor);
-    const view = avatarWorldPos(inp.selfFloor, inp.selfSide);
+    const view = avatarWorldPos(inp.selfFloor, inp.selfSide, inp.selfFloor);
 
     const desiredCamX = inp.screenW * 0.5 - view.x;
     const desiredCamY = inp.screenH * 0.7 - view.y;
@@ -152,12 +153,14 @@ export class TowerWorldView {
 
     this.worldRoot.position.set(this.camTX, this.camTY);
 
-    this.drawRails(lo, hi);
-    this.drawVoidBand(lo, hi);
+    const span = this.bridgeSpan(lo, hi, inp.selfFloor);
+    this.drawPillars(span, inp.selfFloor, pulse);
+    this.drawRails(span);
+    this.drawVoidBand(span);
     this.drawColumns(inp, lo, hi, pulse, perf);
-    this.drawGoal(lo, hi);
-    this.drawHintFlares(inp.activeHints, now);
-    this.layoutHintTexts(inp.activeHints, now);
+    this.drawGoal(lo, hi, inp.selfFloor);
+    this.drawHintFlares(inp.activeHints, now, inp.selfFloor);
+    this.layoutHintTexts(inp.activeHints, now, inp.selfFloor);
     this.layoutCharacters(inp, lo, hi, perf);
   }
 
@@ -171,77 +174,126 @@ export class TowerWorldView {
     return `${row}|${side}`;
   }
 
-  private drawRails(lo: number, hi: number): void {
-    this.railG.clear();
+  private bridgeSpan(
+    lo: number,
+    hi: number,
+    vf: number
+  ): { xlR: number; xrR: number; yTop: number; yBot: number; lo: number; hi: number } {
+    let xlR = tileWorldPos(lo, "left", vf).x;
+    let xrR = tileWorldPos(lo, "right", vf).x;
+    for (let f = lo; f <= hi; f++) {
+      xlR = Math.min(xlR, tileWorldPos(f, "left", vf).x);
+      xrR = Math.max(xrR, tileWorldPos(f, "right", vf).x);
+    }
     const yTop = floorWorldY(hi) - TILE_VERTICAL_GAP * 0.55 - BRIDGE_MARGIN * 0.2;
     const yBot = floorWorldY(lo) + TILE_VERTICAL_GAP * 0.55 + ISO_TOP_HV + GLASS_HALF_H + 80;
-    const xl = -LANE_OFFSET_X;
-    const xr = LANE_OFFSET_X;
+    return { xlR, xrR, yTop, yBot, lo, hi };
+  }
 
-    this.railG.moveTo(xl, yTop).lineTo(xl, yBot).stroke({ width: 3.2, color: 0xb8d4ff, alpha: 0.26 });
-    this.railG.moveTo(xr, yTop).lineTo(xr, yBot).stroke({ width: 3.2, color: 0xd4b8e8, alpha: 0.24 });
+  private drawPillars(
+    span: { xlR: number; xrR: number; yTop: number; yBot: number; lo: number; hi: number },
+    vf: number,
+    pulse: number
+  ): void {
+    this.pillarG.clear();
+    const { xlR, xrR, yTop, yBot, lo, hi } = span;
+    const pillarW = 38;
+    const xlP = xlR - pillarW - 30;
+    const xrP = xrR + 30;
+    const h = yBot - yTop;
+    this.pillarG.roundRect(xlP, yTop, pillarW, h, 8).fill({ color: 0x06090f, alpha: 0.78 });
+    this.pillarG.roundRect(xrP, yTop, pillarW, h, 8).fill({ color: 0x06090f, alpha: 0.78 });
+
+    const glowA = 0.28 + pulse * 0.42;
+    let fy = yTop + 56;
+    while (fy < yBot - 40) {
+      const seed = Math.floor(fy + vf * 13) * 1103515245;
+      const j = ((seed >> 8) & 255) % 14;
+      this.pillarG.rect(xlP + 10, fy + j * 0.15, 11, 11).fill({ color: 0x3399ff, alpha: glowA * 0.65 });
+      this.pillarG.rect(xrP + pillarW - 21, fy + j * 0.12, 11, 11).fill({ color: 0xaa66ee, alpha: glowA * 0.55 });
+      fy += TILE_VERTICAL_GAP * 0.42;
+    }
+
+    const step = Math.max(4, Math.floor((hi - lo) / 16));
+    for (let f = lo; f <= hi; f += step) {
+      const twL = tileWorldPos(f, "left", vf);
+      const y = twL.y;
+      this.pillarG.moveTo(xlP + pillarW, y).lineTo(xrP, y).stroke({ width: 0.85, color: 0xffffff, alpha: 0.04 });
+    }
+  }
+
+  private drawRails(span: { xlR: number; xrR: number; yTop: number; yBot: number; lo: number; hi: number }): void {
+    this.railG.clear();
+    const { xlR, xrR, yTop, yBot, lo, hi } = span;
+
+    this.railG.moveTo(xlR, yTop).lineTo(xlR, yBot).stroke({ width: 3.4, color: 0xb8d4ff, alpha: 0.32 });
+    this.railG.moveTo(xrR, yTop).lineTo(xrR, yBot).stroke({ width: 3.4, color: 0xd4b8e8, alpha: 0.28 });
 
     const step = Math.max(4, Math.floor((hi - lo) / 14));
     for (let f = lo; f <= hi; f += step) {
       const y = floorWorldY(f);
-      this.railG.moveTo(xl - 12, y).lineTo(xr + 12, y).stroke({ width: 1.05, color: 0xffffff, alpha: 0.06 });
+      this.railG.moveTo(xlR - 10, y).lineTo(xrR + 10, y).stroke({ width: 1.05, color: 0xffffff, alpha: 0.07 });
     }
   }
 
-  private drawVoidBand(lo: number, hi: number): void {
+  private drawVoidBand(span: { xlR: number; xrR: number; yTop: number; yBot: number }): void {
     this.laneG.clear();
-    const yTop = floorWorldY(hi) - TILE_VERTICAL_GAP - 60;
-    const yBot = floorWorldY(lo) + TILE_VERTICAL_GAP + GLASS_HALF_H + 120;
-    const innerL = -LANE_OFFSET_X + ISO_TOP_HW * 0.35;
-    const innerR = LANE_OFFSET_X - ISO_TOP_HW * 0.35;
+    const { xlR, xrR, yTop, yBot } = span;
+    const innerL = xlR + ISO_TOP_HW * 0.42;
+    const innerR = xrR - ISO_TOP_HW * 0.42;
     this.laneG
-      .rect(innerL, yTop, innerR - innerL, yBot - yTop)
-      .fill({ color: 0x050910, alpha: 0.48 })
-      .stroke({ width: 1, color: 0xffffff, alpha: 0.05 });
+      .rect(innerL, yTop - TILE_VERTICAL_GAP * 0.35, innerR - innerL, yBot - yTop + TILE_VERTICAL_GAP * 0.7)
+      .fill({ color: 0x020408, alpha: 0.62 })
+      .stroke({ width: 1, color: 0x223344, alpha: 0.08 });
   }
 
   /** 위쪽(+전진) 방향 표시 */
-  private drawForwardCue(g: Graphics, cx: number, cy: number, alpha: number): void {
-    const tipY = cy - ISO_TOP_HV - 52;
-    const baseY = cy - ISO_TOP_HV - 14;
-    g.moveTo(cx - 28, baseY)
+  private drawForwardCue(g: Graphics, cx: number, cy: number, alpha: number, scale: number): void {
+    const hv = ISO_TOP_HV * scale;
+    const tipY = cy - hv - 52 * scale;
+    const baseY = cy - hv - 14 * scale;
+    g.moveTo(cx - 28 * scale, baseY)
       .lineTo(cx, tipY)
-      .lineTo(cx + 28, baseY)
+      .lineTo(cx + 28 * scale, baseY)
       .closePath()
       .stroke({ width: 2.4, color: 0xfffde6, alpha });
-    g.moveTo(cx - 28, baseY)
+    g.moveTo(cx - 28 * scale, baseY)
       .lineTo(cx, tipY)
-      .lineTo(cx + 28, baseY)
+      .lineTo(cx + 28 * scale, baseY)
       .closePath()
       .fill({ color: 0xffffff, alpha: alpha * 0.14 });
   }
 
   private drawColumns(inp: TowerSyncInput, lo: number, hi: number, pulse: number, perf: number): void {
     this.paneG.clear();
-    const gw = ISO_TOP_HW * 2.4;
     const glowPick = (kk: string): boolean =>
       !inp.hasWon && inp.pickGlowKeys.includes(kk);
+    const vf = inp.selfFloor;
 
     for (let c = hi; c >= lo; c--) {
       const fog = columnFog(c, inp.selfBestReached, inp.selfFloor);
       for (const lane of ["left", "right"] as const) {
         const kk = this.k(c, lane);
-        const loc = tileWorldCenter(c, lane);
+        const tw = tileWorldPos(c, lane, vf);
+        const loc = { x: tw.x, y: tw.y };
         const broken = this.broken.has(kk);
         const shineBase = glowPick(kk) ? 0.48 + pulse * 0.52 : 0;
+        const gw = ISO_TOP_HW * 2.4 * tw.scale;
 
         drawBridgeVerticalBlock(this.paneG, loc.x, loc.y, {
           fog,
           broken,
           lane,
-          glow: shineBase ? shineBase : fog * 0.06
+          glow: shineBase ? shineBase : fog * 0.06,
+          scale: tw.scale,
+          neonPick: shineBase > 0.05
         });
 
         if (broken) {
           drawSideGlassShards(
             this.paneG,
             loc.x,
-            loc.y + ISO_TOP_HV * 0.45 + 18,
+            loc.y + ISO_TOP_HV * tw.scale * 0.45 + 18 * tw.scale,
             gw,
             c * 19 + (lane === "right" ? 91 : 0)
           );
@@ -249,61 +301,65 @@ export class TowerWorldView {
 
         if (shineBase && !broken) {
           const a = shineBase * 0.78;
-          this.drawForwardCue(this.paneG, loc.x, loc.y, Math.min(0.95, a));
+          this.drawForwardCue(this.paneG, loc.x, loc.y, Math.min(0.95, a), tw.scale);
         }
 
         const brkLoc = this.localBreakStarted.get(kk);
         if (brkLoc !== undefined) {
           const t = Math.min(1, (perf - brkLoc) / 430);
-          drawCrackBurst(this.paneG, loc.x, loc.y, Math.max(0.72, 1 - fog * 0.04), t);
+          drawCrackBurst(this.paneG, loc.x, loc.y, Math.max(0.72, 1 - fog * 0.04) * tw.scale, t);
         }
       }
     }
   }
 
-  private drawGoal(lo: number, hi: number): void {
+  private drawGoal(lo: number, hi: number, viewerFloor: number): void {
     if (CLIENT_GOAL_FLOOR < lo || CLIENT_GOAL_FLOOR > hi) return;
+    const gl = tileWorldPos(CLIENT_GOAL_FLOOR, "left", viewerFloor);
+    const gr = tileWorldPos(CLIENT_GOAL_FLOOR, "right", viewerFloor);
     const gy = floorWorldY(CLIENT_GOAL_FLOOR);
-    const span = LANE_OFFSET_X * 2 + ISO_TOP_HW * 2 + 36;
-    const x0 = -span / 2;
-    const bannerY = gy - ISO_TOP_HV - 100;
+    const sc = (gl.scale + gr.scale) * 0.5;
+    const span = gr.x - gl.x + ISO_TOP_HW * (gl.scale + gr.scale) + 52 * sc;
+    const x0 = gl.x - ISO_TOP_HW * gl.scale - 22 * sc;
+    const bannerY = gy - ISO_TOP_HV * sc - 100 * sc;
     this.paneG
-      .moveTo(x0, bannerY + 44)
-      .lineTo(x0 + span, bannerY + 44)
-      .lineTo(x0 + span - 18, bannerY)
-      .lineTo(x0 + 18, bannerY)
+      .moveTo(x0, bannerY + 44 * sc)
+      .lineTo(x0 + span, bannerY + 44 * sc)
+      .lineTo(x0 + span - 18 * sc, bannerY)
+      .lineTo(x0 + 18 * sc, bannerY)
       .closePath()
       .fill({ color: 0xffde66, alpha: 0.88 });
+    const mid = (gl.x + gr.x) * 0.5;
     this.paneG
-      .moveTo(0, bannerY + 42)
-      .lineTo(0, gy - ISO_TOP_HV - 12)
+      .moveTo(mid, bannerY + 42 * sc)
+      .lineTo(mid, gy - ISO_TOP_HV * sc - 12 * sc)
       .stroke({ width: 1.8, color: 0xffffff, alpha: 0.38 });
   }
 
-  private drawHintFlares(rows: HintFlash[], serverNow: number): void {
+  private drawHintFlares(rows: HintFlash[], serverNow: number, viewerFloor: number): void {
     this.hintGfx.clear();
-    const bw = ISO_TOP_HW * 2 + 52;
-    const bh = ISO_TOP_HV * 2 + 88;
     for (const h of rows) {
       if (serverNow >= h.expiresAt) continue;
       const pulse = Math.min(1.2, Math.max(0, (h.expiresAt - serverNow) / 1000));
-      const p = tileWorldCenter(h.floor, h.safeSide);
+      const p = tileWorldPos(h.floor, h.safeSide, viewerFloor);
+      const bw = (ISO_TOP_HW * 2 + 52) * p.scale;
+      const bh = (ISO_TOP_HV * 2 + 88) * p.scale;
       this.hintGfx
-        .roundRect(p.x - bw / 2, p.y - bh / 2 + 8, bw, bh, 16)
+        .roundRect(p.x - bw / 2, p.y - bh / 2 + 8 * p.scale, bw, bh, 16 * p.scale)
         .stroke({ width: 3.5 + pulse, color: 0xfff8b0, alpha: 0.28 + pulse * 0.5 });
     }
   }
 
-  private layoutHintTexts(rows: HintFlash[], serverNow: number): void {
+  private layoutHintTexts(rows: HintFlash[], serverNow: number, viewerFloor: number): void {
     let i = 0;
     for (const h of rows) {
       if (serverNow >= h.expiresAt) continue;
       if (i >= this.hintTexts.length) break;
       const lbl = this.hintTexts[i++];
-      const p = tileWorldCenter(h.floor, h.safeSide);
+      const p = tileWorldPos(h.floor, h.safeSide, viewerFloor);
       const nn = h.nickname.length > 14 ? `${h.nickname.slice(0, 13)}…` : h.nickname;
       lbl.text = `${nn} · ⚡안전패널 노출중`;
-      lbl.position.set(p.x, p.y - ISO_TOP_HV - 118);
+      lbl.position.set(p.x, p.y - ISO_TOP_HV * p.scale - 118 * p.scale);
       lbl.visible = true;
     }
     for (; i < this.hintTexts.length; i++) this.hintTexts[i].visible = false;
@@ -327,11 +383,12 @@ export class TowerWorldView {
       const anim = this.falls.get(g.id)!;
       const tRaw = Math.min(1, (perf - anim.t0) / anim.durationMs);
       const ease = tRaw * tRaw;
-      const b0 = tileWorldCenter(anim.fromFloor, anim.side);
+      const b0 = tileWorldPos(anim.fromFloor, anim.side, inp.selfFloor);
       const x = b0.x + (start.x - b0.x) * ease;
       const y = b0.y + (start.y - b0.y) * ease;
       const slot = this.slots[si++];
       slot.root.visible = true;
+      slot.root.scale.set(1);
       slot.root.position.set(x, y);
       slot.root.zIndex = 500000;
       slot.body.clear().ellipse(0, 6, 12, 8).fill({ color: 0xff7788, alpha: 0.55 });
@@ -363,7 +420,7 @@ export class TowerWorldView {
       const side = ln as ScrollSide;
       if (row < lo - 22 || row > hi + 22) continue;
 
-      const avBase = avatarWorldPos(row, side);
+      const twBase = tileWorldPos(row, side, inp.selfFloor);
       const n = arr.length;
 
       arr.forEach((pl, ix) => {
@@ -372,7 +429,8 @@ export class TowerWorldView {
         const lift = ix * bodyLiftPerStack;
 
         slot.root.visible = true;
-        slot.root.position.set(avBase.x, avBase.y - lift);
+        slot.root.scale.set(twBase.scale);
+        slot.root.position.set(twBase.x, twBase.y - lift);
         slot.root.zIndex = -row * 800 + ix;
 
         slot.body.position.set(0, 0);
@@ -393,12 +451,14 @@ export class TowerWorldView {
         slot.label.anchor.set(0.5, 1);
         const nmCap = 22;
         const raw = pl.name.length > nmCap ? `${pl.name.slice(0, nmCap - 1)}…` : pl.name;
-        slot.label.text = raw + (self ? " ⭐" : "");
+        slot.label.text = self ? `YOU\n▼\n${raw} ⭐` : raw;
         slot.label.style.fontSize = 14;
         slot.label.style.fontWeight = "700";
         const hinted = hintedUsers.has(pl.id);
         slot.label.style.fill = self ? 0xfffce8 : hinted ? 0xfff2b8 : 0xffffff;
         slot.label.style.stroke = { color: 0x0a1020, width: 3 };
+        slot.label.style.align = "center";
+        slot.label.style.lineHeight = self ? 14 : 18;
         slot.label.position.set(0, -14 - ix * nickLine);
       });
     }

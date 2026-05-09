@@ -55,9 +55,17 @@ export function drawBridgeVerticalBlock(
   g: Graphics,
   cx: number,
   cy: number,
-  opts: { fog: number; broken: boolean; glow: number; lane: ScrollSide }
+  opts: {
+    fog: number;
+    broken: boolean;
+    glow: number;
+    lane: ScrollSide;
+    scale?: number;
+    neonPick?: boolean;
+  }
 ): void {
-  const { fog, broken, glow, lane } = opts;
+  const { fog, broken, glow, lane, neonPick = false } = opts;
+  const sc = opts.scale ?? 1;
   const laneMix = lane === "right" ? 0.24 : 0;
 
   let topC = mixRgb(BRIDGE_TOP_BASE, LANE_PINK, laneMix);
@@ -75,8 +83,8 @@ export function drawBridgeVerticalBlock(
     frontC = blendFogColor(frontC, fog);
   }
 
-  const hw = ISO_TOP_HW;
-  const hv = ISO_TOP_HV;
+  const hw = ISO_TOP_HW * sc;
+  const hv = ISO_TOP_HV * sc;
   const tx = cx;
   const ty = cy - hv;
   const rx = cx + hw;
@@ -86,16 +94,16 @@ export function drawBridgeVerticalBlock(
   const lx = cx - hw;
   const ly = cy;
 
-  const sdx = ISO_SIDE_DEPTH_X;
-  const sdy = ISO_SIDE_DEPTH_Y;
-  const D = ISO_FRONT_DEPTH;
+  const sdx = ISO_SIDE_DEPTH_X * sc;
+  const sdy = ISO_SIDE_DEPTH_Y * sc;
+  const D = ISO_FRONT_DEPTH * sc;
 
   fillQuad(g, lx, ly, tx, ty, tx - sdx, ty + sdy, lx - sdx * 0.85, ly + sdy * 0.92, { color: sideC, alpha: 1 });
   fillQuad(g, tx, ty, rx, ry, rx + sdx * 0.85, ry + sdy * 0.92, tx + sdx, ty + sdy, { color: sideC, alpha: 1 });
 
-  const fwTop = hw + 10;
+  const fwTop = hw + 10 * sc;
   const fwBot = hw * 0.72;
-  const fy0 = by - 4;
+  const fy0 = by - 4 * sc;
   const fy1 = by + D;
   fillQuad(
     g,
@@ -118,10 +126,24 @@ export function drawBridgeVerticalBlock(
     .closePath()
     .fill({ color: topC, alpha: topAlpha })
     .stroke({
-      width: 1.15 + glow * 2.8,
+      width: (1.15 + glow * 2.8) * sc,
       color: 0xffffff,
       alpha: broken ? 0.12 : 0.14 + glow * 0.52
     });
+
+  if (neonPick && !broken) {
+    const neon = lane === "left" ? 0x44eeff : 0xd466ff;
+    g.moveTo(tx, ty)
+      .lineTo(rx, ry)
+      .lineTo(bx, by)
+      .lineTo(lx, ly)
+      .closePath()
+      .stroke({
+        width: (3.4 + glow * 2.4) * sc,
+        color: neon,
+        alpha: 0.42 + glow * 0.45
+      });
+  }
 }
 
 /** @deprecated 호환용 — 세로 블록 사용 */
