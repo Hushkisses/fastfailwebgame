@@ -1,5 +1,6 @@
 import { Application, Container, Graphics, Text } from "pixi.js";
 import { CLIENT_GOAL_FLOOR } from "../config/climbConfig";
+import { t, type Locale } from "../i18n";
 import type { PickTarget, Side } from "../logic/pickPath";
 import { drawSideGlassSlab } from "./drawGlass";
 import { ISO_FRONT_DEPTH, ISO_TOP_HW, ISO_TOP_HV, tileWorldPos } from "./sidescrollLayout";
@@ -29,12 +30,16 @@ export interface PickHighlights {
 }
 
 const MAX_PICK_SLOTS = 200;
+const FAIL_ENERGY_STAGE_THRESHOLDS = [0, 180, 600] as const;
 
 export class ClimbStage {
   private readonly towerView: TowerWorldView;
   private readonly root = new Container();
   private readonly title: Text;
   private readonly stats: Text;
+  private readonly energyLabel: Text;
+  private readonly energyBarBack = new Graphics();
+  private readonly energyBarFill = new Graphics();
   /** 구형 L/R 큐브 — 비표시(다열 픽으로 대체) */
   private readonly leftWrap = new Container();
   private readonly rightWrap = new Container();
@@ -62,7 +67,7 @@ export class ClimbStage {
   private readonly leftTint = 0x6aa6ff;
   private readonly rightTint = 0xff8f6a;
 
-  constructor(private readonly app: Application) {
+  constructor(private readonly app: Application, private readonly locale: Locale) {
     this.title = new Text({
       text: "",
       style: {
@@ -84,10 +89,22 @@ export class ClimbStage {
         stroke: { color: 0xffffff, width: 4 }
       }
     });
+    this.energyLabel = new Text({
+      text: "",
+      style: {
+        fill: 0x2a3344,
+        fontSize: 12,
+        fontWeight: "800",
+        lineHeight: 16,
+        stroke: { color: 0xffffff, width: 4 }
+      }
+    });
     this.title.position.set(24, 22);
-    this.stats.position.set(24, 70);
+    this.energyLabel.position.set(24, 72);
+    this.stats.position.set(24, 106);
     this.title.alpha = 1;
     this.stats.alpha = 1;
+    this.energyLabel.alpha = 1;
 
     this.leftCap.anchor.set(0.5, 1.35);
     this.leftCap.position.set(0, -8);
@@ -125,9 +142,21 @@ export class ClimbStage {
 
     this.title.zIndex = 110;
     this.stats.zIndex = 110;
+    this.energyLabel.zIndex = 110;
+    this.energyBarBack.zIndex = 108;
+    this.energyBarFill.zIndex = 109;
 
     this.root.sortableChildren = true;
-    this.root.addChild(this.hudPanel, this.title, this.stats, this.hudSpine, this.vignette);
+    this.root.addChild(
+      this.hudPanel,
+      this.energyBarBack,
+      this.energyBarFill,
+      this.title,
+      this.energyLabel,
+      this.stats,
+      this.hudSpine,
+      this.vignette
+    );
     this.towerView.worldRoot.addChild(this.leftWrap, this.rightWrap, this.pickLayer);
     this.worldRootInteractiveSort();
 
@@ -199,7 +228,7 @@ export class ClimbStage {
        * 다음 발판(t.floor + 1)과 같은 위치에 둔다.
        */
       const landingFloor = t.floor + 1;
-      const tw = tileWorldPos(landingFloor, t.side, inp.selfFloor);
+      const tw = tileWorldPos(landingFloor, t.side, inp.selfFloor, inp.jumpPower);
       slot.wrap.position.set(tw.x, tw.y);
       slot.wrap.scale.set(tw.scale);
       slot.wrap.visible = true;
@@ -263,7 +292,7 @@ export class ClimbStage {
     const panelX = 12;
     const panelY = 12;
     const panelW = 268;
-    const panelH = 116;
+    const panelH = 132;
     this.hudPanel
       .roundRect(panelX, panelY, panelW, panelH, 12)
       .fill({ color: 0xffffff, alpha: 0.86 })
@@ -288,19 +317,61 @@ export class ClimbStage {
 
   setHud(model: ClimbHudModel, picks: PickHighlights): void {
     this.hudRef = picks;
-    const win = model.hasWon ? "\n★ 목표 층 도달! 승리 ★" : "";
+    const win = model.hasWon ? `\n${t(this.locale, "hud.win")}` : "";
     const nowTs = Date.now();
     const wait =
       model.respawnAvailableAt > nowTs ? Math.ceil((model.respawnAvailableAt - nowTs) / 100) / 10 : 0;
-    const revive = wait > 0 ? `\n⏳ 데이터 복구·부활 대기 (${wait}s)` : "";
-    this.title.text = `현재  ${model.floor}층\n목표  ${CLIENT_GOAL_FLOOR}층`;
-    this.stats.text = [
-      `실패에너지 ${model.failEnergy.toFixed(1)} · 점프 ${model.jumpPower} · 속도 ${model.moveSpeed.toFixed(1)}`,
-      `피크 ${model.runPeakFloor}F · 오라 ${model.auraTier}${win}${revive}`
+    const revive = wait > 0 ? `\n${t(this.locale, "hud.respawnWait", { seconds: wait })}` : "";
+    this.title.text = [
+      t(this.locale, "hud.currentFloor", { floor: model.floor }),
+      t(this.locale, "hud.goalFloor", { floor: CLIENT_GOAL_FLOOR })
     ].join("\n");
+    const energyProgress = this.failEnergyProgress(model.failEnergy);
+    this.energyLabel.text = `${t(this.locale, "hud.failEnergyLabel")} · ${
+      energyProgress.remaining > 0
+        ? t(this.locale, "hud.failEnergyRemaining", { amount: energyProgress.remaining.toFixed(1) })
+        : t(this.locale, "hud.failEnergyMax")
+    }`;
+    this.drawFailEnergyGauge(energyProgress.progress);
+    this.stats.text = `${win}${revive}`.trim();
   }
 
   onPick(cb: (path: Side[]) => void): void {
     this.onPickPathHandler = cb;
+  }
+
+  private failEnergyProgress(failEnergy: number): { progress: number; remaining: number } {
+    const energy = Math.max(0, failEnergy);
+    for (let i = 1; i < FAIL_ENERGY_STAGE_THRESHOLDS.length; i++) {
+      const prev = FAIL_ENERGY_STAGE_THRESHOLDS[i - 1]!;
+      const next = FAIL_ENERGY_STAGE_THRESHOLDS[i]!;
+      if (energy < next) {
+        return {
+          progress: Math.max(0, Math.min(1, (energy - prev) / (next - prev))),
+          remaining: next - energy
+        };
+      }
+    }
+    return { progress: 1, remaining: 0 };
+  }
+
+  private drawFailEnergyGauge(progress: number): void {
+    const x = 24;
+    const y = 91;
+    const w = 228;
+    const h = 11;
+    const fillW = Math.max(0, Math.min(1, progress)) * w;
+
+    this.energyBarBack.clear();
+    this.energyBarBack
+      .roundRect(x, y, w, h, 999)
+      .fill({ color: 0xdde8f6, alpha: 0.9 })
+      .stroke({ width: 1, color: 0xffffff, alpha: 0.9 });
+
+    this.energyBarFill.clear();
+    if (fillW <= 0) return;
+    this.energyBarFill
+      .roundRect(x, y, fillW, h, 999)
+      .fill({ color: 0x1a8fd8, alpha: 0.95 });
   }
 }

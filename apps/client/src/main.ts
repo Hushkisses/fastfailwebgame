@@ -2,6 +2,7 @@ import { Application } from "pixi.js";
 import { ensureAudio, playThemeSting } from "./audio/themePad";
 import { THEME_EVERY_FLOORS } from "./config/climbConfig";
 import { collectActiveHints } from "./hint/collectHints";
+import { htmlLang, t, type Locale } from "./i18n";
 import { LevelBranchGenerator } from "./logic/levelBranch";
 import { buildPickTargets } from "./logic/pickPath";
 import { trapRevealKeyClient, readTrapKeys } from "./logic/trapKeys";
@@ -36,12 +37,12 @@ function visualTrapKeyFromServerKey(k: string): string | null {
   return trapRevealKeyClient(floor + 1, sideRaw);
 }
 
-function attachHintButton(net: GameNetwork, room: GameRoomLike): void {
+function attachHintButton(net: GameNetwork, room: GameRoomLike, locale: Locale): void {
   const bar = document.createElement("div");
   bar.style.cssText =
     "position:fixed;left:12px;bottom:12px;z-index:50;display:flex;gap:8px";
   const b = document.createElement("button");
-  b.textContent = "힌트 (10s 쿨)";
+  b.textContent = t(locale, "hint.button");
   b.style.cssText =
     "padding:11px 16px;font-size:13px;font-weight:700;border-radius:11px;border:1px solid #c2cfe0;cursor:pointer;color:#0d1422;background:#ffffff;box-shadow:0 2px 8px rgba(20,40,80,0.12)";
   b.onclick = () => {
@@ -49,8 +50,7 @@ function attachHintButton(net: GameNetwork, room: GameRoomLike): void {
     ensureAudio();
   };
   const tip = document.createElement("div");
-  tip.textContent =
-    "다음 줄 정답 유리 패널이 1초간 밝게 표시되며 다른 플레이어에게도 노출됩니다.";
+  tip.textContent = t(locale, "hint.tip");
   tip.style.cssText =
     "align-self:center;max-width:220px;font-size:11px;line-height:1.35;color:#2a3344;font-weight:600;background:rgba(255,255,255,0.78);padding:6px 10px;border-radius:8px;border:1px solid rgba(26,143,216,0.22);";
   bar.append(b, tip);
@@ -59,14 +59,20 @@ function attachHintButton(net: GameNetwork, room: GameRoomLike): void {
   room.onMessage("hintRejected", (raw: unknown) => {
     const msg = (raw ?? {}) as { nextAt?: number };
     const wait = typeof msg?.nextAt === "number" ? Math.max(0, msg.nextAt - Date.now()) : 0;
-    b.textContent = wait > 0 ? `대기 ${(wait / 1000).toFixed(1)}s` : "힌트 (10s 쿨)";
+    b.textContent =
+      wait > 0 ? t(locale, "hint.wait", { seconds: (wait / 1000).toFixed(1) }) : t(locale, "hint.button");
     window.setTimeout(() => {
-      b.textContent = "힌트 (10s 쿨)";
+      b.textContent = t(locale, "hint.button");
     }, Math.min(wait, 5500));
   });
 }
 
-async function startSession(nickname: string, mode: "multi" | "solo" = "multi"): Promise<void> {
+async function startSession(
+  nickname: string,
+  locale: Locale,
+  mode: "multi" | "solo" = "multi"
+): Promise<void> {
+  document.documentElement.lang = htmlLang(locale);
   const appEl = document.getElementById("app");
   if (!appEl) throw new Error("Missing #app root");
 
@@ -78,8 +84,8 @@ async function startSession(nickname: string, mode: "multi" | "solo" = "multi"):
   });
   appEl.appendChild(pixi.canvas);
 
-  const climb = new ClimbStage(pixi);
-  const leaderboard = new LeaderboardPanel(document.body);
+  const climb = new ClimbStage(pixi, locale);
+  const leaderboard = new LeaderboardPanel(document.body, locale);
   const net = new GameNetwork();
 
   let model = defaultModel();
@@ -98,9 +104,9 @@ async function startSession(nickname: string, mode: "multi" | "solo" = "multi"):
 
   const room: GameRoomLike =
     mode === "solo" ? net.connectSolo(nickname) : await net.connect(nickname);
-  if (mode === "solo") attachSoloBadge();
+  if (mode === "solo") attachSoloBadge(locale);
 
-  attachHintButton(net, room);
+  attachHintButton(net, room, locale);
 
   room.onMessage("resolution", (raw: unknown) => {
     const msg = raw as ResolutionEvent;
@@ -221,6 +227,7 @@ async function startSession(nickname: string, mode: "multi" | "solo" = "multi"):
       selfBestReached: model.bestFloorReached,
       selfFloor: model.floor,
       selfSide,
+      jumpPower: model.jumpPower,
       ghosts,
       brokenKeys: [...brokenKeys],
       pickGlowKeys,
@@ -253,9 +260,9 @@ async function startSession(nickname: string, mode: "multi" | "solo" = "multi"):
   });
 }
 
-function attachSoloBadge(): void {
+function attachSoloBadge(locale: Locale): void {
   const tag = document.createElement("div");
-  tag.textContent = "단독 플레이 모드 (서버 미연결)";
+  tag.textContent = t(locale, "solo.badge");
   tag.style.cssText =
     "position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:60;padding:6px 12px;font-size:12px;font-weight:700;color:#7a4a10;border:1px solid #e0c08a;background:#fff7e8;border-radius:999px;letter-spacing:.3px;box-shadow:0 2px 8px rgba(120,80,20,0.12)";
   document.body.appendChild(tag);
@@ -263,11 +270,10 @@ function attachSoloBadge(): void {
 
 openNicknameGate({
   overlayParent: document.body,
-  introTitle: "유리 다리 · 접속 대기실",
-  onJoin: async (nickname) => {
-    await startSession(nickname);
+  onJoin: async (nickname, locale) => {
+    await startSession(nickname, locale);
   },
-  onSolo: async (nickname) => {
-    await startSession(nickname, "solo");
+  onSolo: async (nickname, locale) => {
+    await startSession(nickname, locale, "solo");
   }
 });

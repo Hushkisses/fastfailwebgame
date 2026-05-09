@@ -52,17 +52,24 @@ export function tilePerspectiveScale(tileFloor: number, viewerFloor: number): nu
 export function tileWorldPos(
   floor: number,
   side: ScrollSide,
-  viewerFloor: number
+  viewerFloor: number,
+  selectableHops: number = 1
 ): { x: number; y: number; scale: number } {
   let scale = tilePerspectiveScale(floor, viewerFloor);
   const d = floor - viewerFloor;
   /**
-   * 핵심: 지금 당장 선택해야 하는 d=1 발판이 압도적으로 큼.
-   * 그 다음 줄(d=2)은 확실히 작게 — 시각적 우선순위로 즉시 선택을 유도.
+   * 선택 가능한 발판은 모두 가까운 선택지처럼 크게 보이게 한다.
+   * d=1은 가장 크고, 점프력으로 닿는 마지막 발판까지 완만하게 줄어든다.
    */
-  if (d === 1) scale *= 2.05;
-  else if (d === 2) scale *= 0.88;
-  else if (d >= 5) scale *= 0.78;
+  const hops = Math.max(1, Math.floor(selectableHops));
+  if (d >= 1 && d <= hops) {
+    const t = hops === 1 ? 0 : (d - 1) / (hops - 1);
+    scale *= 2.05 - 0.7 * t;
+  } else if (d === hops + 1) {
+    scale *= 0.88;
+  } else if (d >= hops + 4) {
+    scale *= 0.78;
+  }
 
   const laneBase = side === "left" ? -LANE_OFFSET_X : LANE_OFFSET_X;
   const converge = 0.34 + 0.66 * Math.min(1, scale * 1.05);
@@ -78,8 +85,13 @@ export function tileWorldCenter(floor: number, side: ScrollSide): { x: number; y
   return { x, y: floorWorldY(floor) };
 }
 
-export function avatarWorldPos(floor: number, side: ScrollSide, viewerFloor: number): { x: number; y: number } {
-  const p = tileWorldPos(floor, side, viewerFloor);
+export function avatarWorldPos(
+  floor: number,
+  side: ScrollSide,
+  viewerFloor: number,
+  selectableHops: number = 1
+): { x: number; y: number } {
+  const p = tileWorldPos(floor, side, viewerFloor, selectableHops);
   return { x: p.x, y: p.y };
 }
 

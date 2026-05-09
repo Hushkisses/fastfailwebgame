@@ -1,3 +1,5 @@
+import { t, type Locale } from "../i18n";
+
 export interface BoardRow {
   id: string;
   name: string;
@@ -14,7 +16,7 @@ export class LeaderboardPanel {
   private readonly nameEl: HTMLDivElement;
   private readonly floorEl: HTMLDivElement;
 
-  constructor(parent: HTMLElement) {
+  constructor(parent: HTMLElement, private readonly locale: Locale) {
     this.root = document.createElement("aside");
     this.root.style.position = "fixed";
     this.root.style.right = "16px";
@@ -34,7 +36,7 @@ export class LeaderboardPanel {
     this.root.style.backdropFilter = "blur(4px)";
 
     const label = document.createElement("div");
-    label.textContent = "1 위";
+    label.textContent = t(this.locale, "leaderboard.rankOne");
     label.style.fontSize = "10px";
     label.style.fontWeight = "800";
     label.style.letterSpacing = "0.22em";
@@ -85,8 +87,8 @@ export class LeaderboardPanel {
     })[0]!;
 
     const isYou = top.id === highlightId;
-    this.nameEl.textContent = isYou ? `${top.name} (YOU)` : top.name;
+    this.nameEl.textContent = isYou ? `${top.name} (${t(this.locale, "leaderboard.you")})` : top.name;
     this.nameEl.style.color = isYou ? "#1a8fd8" : "#0d1422";
-    this.floorEl.textContent = `최고 ${top.bestFloor}층`;
+    this.floorEl.textContent = t(this.locale, "leaderboard.bestFloor", { floor: top.bestFloor });
   }
 }

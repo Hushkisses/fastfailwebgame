@@ -36,6 +36,7 @@ export interface TowerSyncInput {
   selfBestReached: number;
   selfFloor: number;
   selfSide: TowerSide;
+  jumpPower: number;
   ghosts: GhostPlayerMini[];
   brokenKeys: string[];
   /** 선택 가능·반짝 슬롯 `층|left|right` (점프력 만큼 여러 열) */
@@ -141,7 +142,7 @@ export class TowerWorldView {
     this.broken = new Set(inp.brokenKeys);
 
     const { lo, hi } = visibleColumnBand(inp.selfFloor);
-    const view = avatarWorldPos(inp.selfFloor, inp.selfSide, inp.selfFloor);
+    const view = avatarWorldPos(inp.selfFloor, inp.selfSide, inp.selfFloor, inp.jumpPower);
 
     /**
      * 화면 폭에 따른 월드 스케일 — 모바일 세로 화면에서 양쪽 발판이 모두 보이도록.
@@ -167,14 +168,14 @@ export class TowerWorldView {
 
     this.worldRoot.position.set(this.camTX, this.camTY);
 
-    const span = this.bridgeSpan(lo, hi, inp.selfFloor);
+    const span = this.bridgeSpan(lo, hi, inp.selfFloor, inp.jumpPower);
     this.drawPillars(span, inp.selfFloor, pulse);
     this.drawRails(span);
     this.drawVoidBand(span);
     this.drawColumns(inp, lo, hi, pulse, perf);
-    this.drawGoal(lo, hi, inp.selfFloor);
-    this.drawHintFlares(inp.activeHints, now, inp.selfFloor);
-    this.layoutHintTexts(inp.activeHints, now, inp.selfFloor);
+    this.drawGoal(lo, hi, inp.selfFloor, inp.jumpPower);
+    this.drawHintFlares(inp.activeHints, now, inp.selfFloor, inp.jumpPower);
+    this.layoutHintTexts(inp.activeHints, now, inp.selfFloor, inp.jumpPower);
     this.layoutCharacters(inp, lo, hi, perf);
   }
 
@@ -191,13 +192,14 @@ export class TowerWorldView {
   private bridgeSpan(
     lo: number,
     hi: number,
-    vf: number
+    vf: number,
+    selectableHops: number
   ): { xlR: number; xrR: number; yTop: number; yBot: number; lo: number; hi: number } {
-    let xlR = tileWorldPos(lo, "left", vf).x;
-    let xrR = tileWorldPos(lo, "right", vf).x;
+    let xlR = tileWorldPos(lo, "left", vf, selectableHops).x;
+    let xrR = tileWorldPos(lo, "right", vf, selectableHops).x;
     for (let f = lo; f <= hi; f++) {
-      xlR = Math.min(xlR, tileWorldPos(f, "left", vf).x);
-      xrR = Math.max(xrR, tileWorldPos(f, "right", vf).x);
+      xlR = Math.min(xlR, tileWorldPos(f, "left", vf, selectableHops).x);
+      xrR = Math.max(xrR, tileWorldPos(f, "right", vf, selectableHops).x);
     }
     const yTop = floorWorldY(hi) - TILE_VERTICAL_GAP * 0.55 - BRIDGE_MARGIN * 0.2;
     const yBot = floorWorldY(lo) + TILE_VERTICAL_GAP * 0.55 + ISO_TOP_HV + GLASS_HALF_H + 80;
@@ -231,7 +233,7 @@ export class TowerWorldView {
 
     const step = Math.max(4, Math.floor((hi - lo) / 16));
     for (let f = lo; f <= hi; f += step) {
-      const twL = tileWorldPos(f, "left", vf);
+      const twL = tileWorldPos(f, "left", vf, 1);
       const y = twL.y;
       this.pillarG.moveTo(xlP + pillarW, y).lineTo(xrP, y).stroke({ width: 0.6, color: 0x99a8c0, alpha: 0.18 });
     }
@@ -311,13 +313,13 @@ export class TowerWorldView {
        * 시작 위치는 함정/픽 강조 대상이 아니므로 단순 와이드 슬래브로 그린다.
        */
       if (c === 1) {
-        const tw = tileWorldPos(c, "left", vf);
+        const tw = tileWorldPos(c, "left", vf, inp.jumpPower);
         drawStartingSlab(this.paneG, 0, tw.y, { fog, scale: tw.scale });
         continue;
       }
       for (const lane of ["left", "right"] as const) {
         const kk = this.k(c, lane);
-        const tw = tileWorldPos(c, lane, vf);
+        const tw = tileWorldPos(c, lane, vf, inp.jumpPower);
         const loc = { x: tw.x, y: tw.y };
         const broken = this.broken.has(kk);
         const shineBase = glowPick(kk) ? 0.48 + pulse * 0.52 : 0;
@@ -354,10 +356,10 @@ export class TowerWorldView {
     }
   }
 
-  private drawGoal(lo: number, hi: number, viewerFloor: number): void {
+  private drawGoal(lo: number, hi: number, viewerFloor: number, selectableHops: number): void {
     if (CLIENT_GOAL_FLOOR < lo || CLIENT_GOAL_FLOOR > hi) return;
-    const gl = tileWorldPos(CLIENT_GOAL_FLOOR, "left", viewerFloor);
-    const gr = tileWorldPos(CLIENT_GOAL_FLOOR, "right", viewerFloor);
+    const gl = tileWorldPos(CLIENT_GOAL_FLOOR, "left", viewerFloor, selectableHops);
+    const gr = tileWorldPos(CLIENT_GOAL_FLOOR, "right", viewerFloor, selectableHops);
     const gy = floorWorldY(CLIENT_GOAL_FLOOR);
     const sc = (gl.scale + gr.scale) * 0.5;
     const span = gr.x - gl.x + ISO_TOP_HW * (gl.scale + gr.scale) + 52 * sc;
@@ -377,12 +379,17 @@ export class TowerWorldView {
       .stroke({ width: 1.2, color: 0xffcc66, alpha: 0.18 });
   }
 
-  private drawHintFlares(rows: HintFlash[], serverNow: number, viewerFloor: number): void {
+  private drawHintFlares(
+    rows: HintFlash[],
+    serverNow: number,
+    viewerFloor: number,
+    selectableHops: number
+  ): void {
     this.hintGfx.clear();
     for (const h of rows) {
       if (serverNow >= h.expiresAt) continue;
       const pulse = Math.min(1.2, Math.max(0, (h.expiresAt - serverNow) / 1000));
-      const p = tileWorldPos(h.floor, h.safeSide, viewerFloor);
+      const p = tileWorldPos(h.floor, h.safeSide, viewerFloor, selectableHops);
       const bw = (ISO_TOP_HW * 2 + 52) * p.scale;
       const bh = (ISO_TOP_HV * 2 + 88) * p.scale;
       this.hintGfx
@@ -391,13 +398,18 @@ export class TowerWorldView {
     }
   }
 
-  private layoutHintTexts(rows: HintFlash[], serverNow: number, viewerFloor: number): void {
+  private layoutHintTexts(
+    rows: HintFlash[],
+    serverNow: number,
+    viewerFloor: number,
+    selectableHops: number
+  ): void {
     let i = 0;
     for (const h of rows) {
       if (serverNow >= h.expiresAt) continue;
       if (i >= this.hintTexts.length) break;
       const lbl = this.hintTexts[i++];
-      const p = tileWorldPos(h.floor, h.safeSide, viewerFloor);
+      const p = tileWorldPos(h.floor, h.safeSide, viewerFloor, selectableHops);
       const nn = h.nickname.length > 14 ? `${h.nickname.slice(0, 13)}…` : h.nickname;
       lbl.text = nn;
       lbl.position.set(p.x, p.y - ISO_TOP_HV * p.scale - 96 * p.scale);
@@ -424,7 +436,7 @@ export class TowerWorldView {
       const anim = this.falls.get(g.id)!;
       const tRaw = Math.min(1, (perf - anim.t0) / anim.durationMs);
       const ease = tRaw * tRaw;
-      const b0 = tileWorldPos(anim.fromFloor, anim.side, inp.selfFloor);
+      const b0 = tileWorldPos(anim.fromFloor, anim.side, inp.selfFloor, inp.jumpPower);
       const x = b0.x + (start.x - b0.x) * ease;
       const y = b0.y + (start.y - b0.y) * ease;
       const slot = this.slots[si++];
@@ -459,7 +471,7 @@ export class TowerWorldView {
       const side = ln as ScrollSide;
       if (row < lo - 22 || row > hi + 22) continue;
 
-      const twBase = tileWorldPos(row, side, inp.selfFloor);
+      const twBase = tileWorldPos(row, side, inp.selfFloor, inp.jumpPower);
       const n = arr.length;
       /** 시작 층(1층) — 좌/우 분리 발판이 아니라 평지 한 개이므로 아바타도 가운데(x=0) */
       const baseX = row === 1 ? 0 : twBase.x;
