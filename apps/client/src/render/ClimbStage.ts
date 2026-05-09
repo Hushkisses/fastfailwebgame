@@ -194,12 +194,12 @@ export class ClimbStage {
 
       const t = targets[i]!;
       /**
-       * 픽 슬롯의 hit 영역은 "출발 패널"(t.floor) 위에 둔다.
-       * 시각 강조(네온 글로우)는 main.ts의 pickGlowKeys → drawColumns에서
-       * "착지 발판"(t.floor + 1)에 표시되므로 "눌러야 할 곳"은 명확하게 보이고,
-       * 깨진 발판 위에 hit가 겹치는 모순도 발생하지 않는다(출발 패널은 항상 안전).
+       * 사용자는 반짝이는 "착지 발판"을 직접 눌러 이동한다.
+       * 서버에 보내는 path는 출발층 기준이지만, 화면 hit 영역은 실제로 밟을
+       * 다음 발판(t.floor + 1)과 같은 위치에 둔다.
        */
-      const tw = tileWorldPos(t.floor, t.side, inp.selfFloor);
+      const landingFloor = t.floor + 1;
+      const tw = tileWorldPos(landingFloor, t.side, inp.selfFloor);
       slot.wrap.position.set(tw.x, tw.y);
       slot.wrap.scale.set(tw.scale);
       slot.wrap.visible = true;

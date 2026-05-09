@@ -29,6 +29,13 @@ function defaultModel(): ClimbHudModel {
   };
 }
 
+function visualTrapKeyFromServerKey(k: string): string | null {
+  const [floorRaw, sideRaw] = k.split("|");
+  const floor = Number(floorRaw);
+  if (!Number.isFinite(floor) || (sideRaw !== "left" && sideRaw !== "right")) return null;
+  return trapRevealKeyClient(floor + 1, sideRaw);
+}
+
 function attachHintButton(net: GameNetwork, room: GameRoomLike): void {
   const bar = document.createElement("div");
   bar.style.cssText =
@@ -104,10 +111,10 @@ async function startSession(nickname: string, mode: "multi" | "solo" = "multi"):
       msg.toFloor === 1
     ) {
       const side = parseSide(msg.trailMark?.side ?? "left");
-      climb.handleRemoteFall(msg.id, msg.fromFloor, side);
+      climb.handleRemoteFall(msg.id, msg.fromFloor + 1, side);
     }
     if (msg.id === room.sessionId && !msg.success && !msg.blockedDuplicate && msg.toFloor === 1) {
-      climb.triggerLocalGlassBreak(msg.fromFloor, parseSide(msg.trailMark?.side ?? "left"));
+      climb.triggerLocalGlassBreak(msg.fromFloor + 1, parseSide(msg.trailMark?.side ?? "left"));
     }
     if (msg.id !== room.sessionId) return;
     if (msg.success || msg.blockedDuplicate || msg.respawnLocked) return;
@@ -198,9 +205,12 @@ async function startSession(nickname: string, mode: "multi" | "solo" = "multi"):
       });
     });
 
-    // 깨진 유리 회색 처리: 다른 플레이어 추락(trails)은 반영하지 않음. 내가 함정 패널을 밟았을 때만(revealedTrapKeys).
+    // 서버 trap key는 "선택 구간 층"이고, 화면에서는 그 결과로 밟는 다음 발판(+1)이 깨져 보인다.
     const brokenKeys = new Set<string>();
-    trapKnown.forEach((k) => brokenKeys.add(k));
+    trapKnown.forEach((k) => {
+      const visualKey = visualTrapKeyFromServerKey(k);
+      if (visualKey) brokenKeys.add(visualKey);
+    });
 
     const activeHints = collectActiveHints(room.state as never, nameBySid);
 
