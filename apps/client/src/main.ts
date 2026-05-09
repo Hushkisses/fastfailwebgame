@@ -10,6 +10,7 @@ import { GameNetwork, type GameRoomLike, type ResolutionEvent } from "./net/coly
 import { ClimbStage, type ClimbHudModel, type GhostPlayerMini } from "./render/ClimbStage";
 import { parseSide } from "./render/towerLayout";
 import { applyWorldTheme } from "./theme/applyWorldTheme";
+import { ClimbHudPanel } from "./ui/climbHudPanel";
 import { LeaderboardPanel, type BoardRow } from "./ui/leaderboardPanel";
 import { openNicknameGate } from "./ui/loginGate";
 
@@ -84,7 +85,8 @@ async function startSession(
   });
   appEl.appendChild(pixi.canvas);
 
-  const climb = new ClimbStage(pixi, locale);
+  const climb = new ClimbStage(pixi);
+  const hud = new ClimbHudPanel(document.body, locale);
   const leaderboard = new LeaderboardPanel(document.body, locale);
   const net = new GameNetwork();
 
@@ -196,6 +198,7 @@ async function startSession(
       leftEnabled: pickTargets.length > 0,
       rightEnabled: pickTargets.length > 0
     });
+    hud.render(model);
 
     /** 글로우는 "착지 발판"(t.floor + 1)에 표시 — 사용자가 보고 누를 발판이 빛남 */
     const pickGlowKeys = pickTargets.map((t) => trapRevealKeyClient(t.floor + 1, t.side));

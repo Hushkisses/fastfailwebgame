@@ -47,19 +47,8 @@ export const gameBalance = {
 
 
 
-  /**
-
-   * 절벽: 층 라인 `at` 포함 구간을 오를 때 jumpPower 또는 failEnergy 중 하나 필요.
-
-   */
-
-  walls: [
-
-    { at: 30, minJumpPower: 4, minFailEnergy: 42 },
-
-    { at: 60, minJumpPower: 4, minFailEnergy: 105 }
-
-  ],
+  /** 절벽 조건 없음: 안전한 선택이면 특정 층 라인에서 추가로 막히지 않음. */
+  walls: [],
 
 
 

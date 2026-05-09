@@ -23,10 +23,7 @@ export const soloBalance = {
   maxMoveSpeed: 90,
   energySpeedGrowth: 1.065,
 
-  walls: [
-    { at: 30, minJumpPower: 4, minFailEnergy: 42 },
-    { at: 60, minJumpPower: 4, minFailEnergy: 105 }
-  ] as const,
+  walls: [] as const,
 
   hintCooldownMs: 10000,
   hintRevealMs: 1000,

@@ -170,7 +170,7 @@ export class TowerWorldView {
 
     const span = this.bridgeSpan(lo, hi, inp.selfFloor, inp.jumpPower);
     this.drawPillars(span, inp.selfFloor, pulse);
-    this.drawRails(span);
+    this.railG.clear();
     this.drawVoidBand(span);
     this.drawColumns(inp, lo, hi, pulse, perf);
     this.drawGoal(lo, hi, inp.selfFloor, inp.jumpPower);
