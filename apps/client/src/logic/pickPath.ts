@@ -62,8 +62,16 @@ export function buildPickTargets(
     /** 착지 층 = startFloor + (offset+1); 목표 초과 패널은 선택 불가 */
     if (startFloor + offset + 1 > CLIENT_GOAL_FLOOR) continue;
     for (const side of ["left", "right"] as const) {
-      const key = trapRevealKeyClient(col, side);
-      if (trapKnown.has(key)) continue;
+      /** 출발 패널이 이미 함정으로 알려져 있으면 픽 자체를 만들지 않음 */
+      const startKey = trapRevealKeyClient(col, side);
+      if (trapKnown.has(startKey)) continue;
+      /**
+       * 시각상 픽 슬롯은 "착지 발판"(col + 1) 위에 놓이므로,
+       * 착지 발판이 이미 함정/깨진 발판으로 알려진 경우에도 픽을 제외해야
+       * 깨진 발판 위에 hit 영역이 깔리는 모순이 없다.
+       */
+      const landingKey = trapRevealKeyClient(col + 1, side);
+      if (trapKnown.has(landingKey)) continue;
       const path = inferPathForSlot(gen, startFloor, offset, side, trapKnown);
       if (path) out.push({ floor: col, side, path });
     }

@@ -21,12 +21,12 @@ export class LeaderboardPanel {
     this.root.style.top = "16px";
     this.root.style.padding = "10px 16px";
     this.root.style.boxSizing = "border-box";
-    this.root.style.background = "rgba(8,10,18,0.78)";
-    this.root.style.color = "#e8ecff";
+    this.root.style.background = "rgba(255,255,255,0.92)";
+    this.root.style.color = "#0d1422";
     this.root.style.fontFamily = "system-ui, sans-serif";
     this.root.style.borderRadius = "12px";
-    this.root.style.border = "1px solid rgba(120,200,255,0.28)";
-    this.root.style.boxShadow = "0 8px 22px rgba(0,0,0,0.45)";
+    this.root.style.border = "1px solid rgba(26,143,216,0.5)";
+    this.root.style.boxShadow = "0 6px 18px rgba(20,40,80,0.18)";
     this.root.style.zIndex = "30";
     this.root.style.pointerEvents = "none";
     this.root.style.minWidth = "140px";
@@ -36,23 +36,24 @@ export class LeaderboardPanel {
     const label = document.createElement("div");
     label.textContent = "1 위";
     label.style.fontSize = "10px";
-    label.style.fontWeight = "700";
+    label.style.fontWeight = "800";
     label.style.letterSpacing = "0.22em";
-    label.style.opacity = "0.78";
-    label.style.color = "#aef0ff";
+    label.style.opacity = "0.95";
+    label.style.color = "#1a8fd8";
     label.style.marginBottom = "4px";
 
     this.nameEl = document.createElement("div");
     this.nameEl.style.fontSize = "17px";
     this.nameEl.style.fontWeight = "800";
-    this.nameEl.style.color = "#f4f8ff";
+    this.nameEl.style.color = "#0d1422";
     this.nameEl.style.letterSpacing = "0.02em";
     this.nameEl.textContent = "—";
 
     this.floorEl = document.createElement("div");
     this.floorEl.style.fontSize = "11px";
-    this.floorEl.style.fontWeight = "600";
-    this.floorEl.style.opacity = "0.72";
+    this.floorEl.style.fontWeight = "700";
+    this.floorEl.style.opacity = "0.78";
+    this.floorEl.style.color = "#3a4458";
     this.floorEl.style.marginTop = "3px";
     this.floorEl.textContent = "";
 
@@ -85,7 +86,7 @@ export class LeaderboardPanel {
 
     const isYou = top.id === highlightId;
     this.nameEl.textContent = isYou ? `${top.name} (YOU)` : top.name;
-    this.nameEl.style.color = isYou ? "#aef0ff" : "#f4f8ff";
+    this.nameEl.style.color = isYou ? "#1a8fd8" : "#0d1422";
     this.floorEl.textContent = `최고 ${top.bestFloor}층`;
   }
 }

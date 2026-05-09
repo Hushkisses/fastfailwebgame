@@ -90,10 +90,10 @@ export class TowerWorldView {
       const label = new Text({
         text: "",
         style: {
-          fill: 0xc8dcff,
+          fill: 0x1a2434,
           fontSize: 10,
-          fontWeight: "600",
-          stroke: { color: 0x000000, width: 4 }
+          fontWeight: "700",
+          stroke: { color: 0xffffff, width: 4 }
         }
       });
       label.anchor.set(0.5, 1);
@@ -108,7 +108,7 @@ export class TowerWorldView {
     for (let i = 0; i < 18; i++) {
       const t = new Text({
         text: "",
-        style: { fill: 0xffeeaa, fontSize: 9, stroke: { color: 0x000000, width: 4 } }
+        style: { fill: 0x6a4a10, fontSize: 9, fontWeight: "700", stroke: { color: 0xffffff, width: 4 } }
       });
       t.anchor.set(0.5, 1);
       t.visible = false;
@@ -144,12 +144,20 @@ export class TowerWorldView {
     const view = avatarWorldPos(inp.selfFloor, inp.selfSide, inp.selfFloor);
 
     /**
+     * 화면 폭에 따른 월드 스케일 — 모바일 세로 화면에서 양쪽 발판이 모두 보이도록.
+     * d=1 두 발판이 여유 있게 들어가는 기준 폭(≈ 940px) 미만이면 비율 축소.
+     */
+    const FIT_WIDTH = 940;
+    const viewScale = Math.min(1, Math.max(0.42, inp.screenW / FIT_WIDTH));
+    this.worldRoot.scale.set(viewScale);
+
+    /**
      * 카메라 X — 월드 x=0 고정. 좌·우 선택에 따라 화면이 이동하지 않음.
      * 두 발판은 항상 화면 중앙 기준으로 대칭 배치됨.
      */
     const desiredCamX = inp.screenW * 0.5;
     /** 낮은 시점 — 플레이어가 발판 앞에 서서 위·앞을 올려보는 느낌 */
-    const desiredCamY = inp.screenH * 0.91 - view.y;
+    const desiredCamY = inp.screenH * 0.91 - viewScale * view.y;
 
     if (!Number.isFinite(this.camTX)) this.camTX = desiredCamX;
     else this.camTX += (desiredCamX - this.camTX) * this.camLerp;
@@ -207,16 +215,17 @@ export class TowerWorldView {
     const xlP = xlR - pillarW - 30;
     const xrP = xrR + 30;
     const h = yBot - yTop;
-    this.pillarG.roundRect(xlP, yTop, pillarW, h, 8).fill({ color: 0x030508, alpha: 0.92 });
-    this.pillarG.roundRect(xrP, yTop, pillarW, h, 8).fill({ color: 0x030508, alpha: 0.92 });
+    /** 라이트 테마 — 기둥은 어두운 슬레이트 (밝은 배경 위에 또렷) */
+    this.pillarG.roundRect(xlP, yTop, pillarW, h, 8).fill({ color: 0x2a3242, alpha: 0.88 });
+    this.pillarG.roundRect(xrP, yTop, pillarW, h, 8).fill({ color: 0x2a3242, alpha: 0.88 });
 
-    const glowA = 0.12 + pulse * 0.18;
+    const glowA = 0.18 + pulse * 0.22;
     let fy = yTop + 56;
     while (fy < yBot - 40) {
       const seed = Math.floor(fy + vf * 13) * 1103515245;
       const j = ((seed >> 8) & 255) % 14;
-      this.pillarG.rect(xlP + 10, fy + j * 0.15, 9, 9).fill({ color: 0x2266aa, alpha: glowA * 0.45 });
-      this.pillarG.rect(xrP + pillarW - 19, fy + j * 0.12, 9, 9).fill({ color: 0x7744aa, alpha: glowA * 0.4 });
+      this.pillarG.rect(xlP + 10, fy + j * 0.15, 9, 9).fill({ color: 0x1a8fd8, alpha: glowA * 0.5 });
+      this.pillarG.rect(xrP + pillarW - 19, fy + j * 0.12, 9, 9).fill({ color: 0xa83cd8, alpha: glowA * 0.45 });
       fy += TILE_VERTICAL_GAP * 0.42;
     }
 
@@ -224,7 +233,7 @@ export class TowerWorldView {
     for (let f = lo; f <= hi; f += step) {
       const twL = tileWorldPos(f, "left", vf);
       const y = twL.y;
-      this.pillarG.moveTo(xlP + pillarW, y).lineTo(xrP, y).stroke({ width: 0.6, color: 0x1a2230, alpha: 0.05 });
+      this.pillarG.moveTo(xlP + pillarW, y).lineTo(xrP, y).stroke({ width: 0.6, color: 0x99a8c0, alpha: 0.18 });
     }
   }
 
@@ -232,13 +241,14 @@ export class TowerWorldView {
     this.railG.clear();
     const { xlR, xrR, yTop, yBot, lo, hi } = span;
 
-    this.railG.moveTo(xlR, yTop).lineTo(xlR, yBot).stroke({ width: 2.2, color: 0x334455, alpha: 0.14 });
-    this.railG.moveTo(xrR, yTop).lineTo(xrR, yBot).stroke({ width: 2.2, color: 0x443355, alpha: 0.12 });
+    /** 라이트 테마 — 레일은 부드러운 회색 라인 */
+    this.railG.moveTo(xlR, yTop).lineTo(xlR, yBot).stroke({ width: 2.2, color: 0x6a7a90, alpha: 0.22 });
+    this.railG.moveTo(xrR, yTop).lineTo(xrR, yBot).stroke({ width: 2.2, color: 0x7a6a90, alpha: 0.22 });
 
     const step = Math.max(4, Math.floor((hi - lo) / 14));
     for (let f = lo; f <= hi; f += step) {
       const y = floorWorldY(f);
-      this.railG.moveTo(xlR - 10, y).lineTo(xrR + 10, y).stroke({ width: 0.75, color: 0x223344, alpha: 0.06 });
+      this.railG.moveTo(xlR - 10, y).lineTo(xrR + 10, y).stroke({ width: 0.75, color: 0x99a8c0, alpha: 0.18 });
     }
   }
 
@@ -248,15 +258,15 @@ export class TowerWorldView {
     const innerL = xlR + ISO_TOP_HW * 0.42;
     const innerR = xrR - ISO_TOP_HW * 0.42;
 
-    /** ① 중앙 협곡 — 슬래브 사이로 보이는 어두운 깊은 통로 */
+    /** 라이트 테마 — 중앙 협곡은 밝은 회색조 그림자 (심연 대신 그림자 갭) */
     const channelTop = yTop - TILE_VERTICAL_GAP * 0.35;
     const channelBot = yBot + TILE_VERTICAL_GAP * 0.5;
     this.laneG
       .rect(innerL, channelTop, innerR - innerL, channelBot - channelTop)
-      .fill({ color: 0x010206, alpha: 0.95 })
-      .stroke({ width: 0.8, color: 0x111822, alpha: 0.06 });
+      .fill({ color: 0xb6c0d0, alpha: 0.34 })
+      .stroke({ width: 0.8, color: 0x6a7890, alpha: 0.18 });
 
-    /** ② 협곡 내부 미스트 — 가로로 흐르는 깊이 단서 */
+    /** 협곡 내부 옅은 가로 줄무늬 — 깊이감 살짝 */
     const layers = 9;
     for (let i = 0; i < layers; i++) {
       const t = i / (layers - 1);
@@ -264,26 +274,26 @@ export class TowerWorldView {
       const w = (innerR - innerL) * (0.6 + (i % 3) * 0.12);
       const xc = (innerL + innerR) * 0.5;
       this.laneG.ellipse(xc, y, w * 0.5, 18).fill({
-        color: 0x05080f,
-        alpha: 0.22 + (i % 2) * 0.08
+        color: 0x8a98ac,
+        alpha: 0.14 + (i % 2) * 0.06
       });
     }
 
-    /** ③ 가장 아래쪽 — 가장자리까지 덮는 심연 (모든 슬래브 발 밑) */
+    /** 슬래브 발 밑 — 부드러운 그림자 영역 (심연 아니라 바닥 그림자) */
     const abyssTop = floorWorldY(lo) + TILE_VERTICAL_GAP * 0.5;
     const abyssH = TILE_VERTICAL_GAP * 6;
     const fullL = xlR - 240;
     const fullR = xrR + 240;
     this.laneG
       .rect(fullL, abyssTop, fullR - fullL, abyssH)
-      .fill({ color: 0x000000, alpha: 0.55 });
+      .fill({ color: 0xc8d2e0, alpha: 0.42 });
     for (let i = 0; i < 5; i++) {
       const t = i / 5;
       const y = abyssTop + abyssH * t;
       const h = abyssH * 0.24;
       this.laneG.rect(fullL, y, fullR - fullL, h).fill({
-        color: 0x000000,
-        alpha: 0.18 + t * 0.18
+        color: 0xa8b4c8,
+        alpha: 0.12 + t * 0.1
       });
     }
   }
@@ -461,12 +471,12 @@ export class TowerWorldView {
         const rI = self ? (many ? 6 : 8) : many ? 4 : 6;
         slot.body.clear().circle(0, 0, rO).stroke({
           width: self ? 2.5 : 1.2,
-          color: self ? 0x66eeff : 0x5588bb,
-          alpha: self ? 0.85 : 0.35
+          color: self ? 0x1a8fd8 : 0x4a5a78,
+          alpha: self ? 0.95 : 0.55
         });
         slot.body.circle(0, 0, rI).fill({
-          color: self ? 0xe8f4ff : 0x406080,
-          alpha: self ? 0.55 : 0.22
+          color: self ? 0x1a8fd8 : 0x607890,
+          alpha: self ? 0.75 : 0.55
         });
 
         slot.label.anchor.set(0.5, 1);
@@ -479,10 +489,10 @@ export class TowerWorldView {
           const raw = pl.name.length > nmCap ? `${pl.name.slice(0, nmCap - 1)}…` : pl.name;
           slot.label.text = self ? `YOU · ${raw}` : raw;
           slot.label.style.fontSize = self ? 11 : 9;
-          slot.label.style.fontWeight = self ? "700" : "600";
+          slot.label.style.fontWeight = self ? "800" : "700";
           const hinted = hintedUsers.has(pl.id);
-          slot.label.style.fill = self ? 0xaeeeff : hinted ? 0xccbbaa : 0x8899aa;
-          slot.label.style.stroke = { color: 0x000000, width: 4 };
+          slot.label.style.fill = self ? 0x1a8fd8 : hinted ? 0x6a4a10 : 0x2a3344;
+          slot.label.style.stroke = { color: 0xffffff, width: 4 };
           slot.label.style.align = "center";
           slot.label.style.lineHeight = 13;
           slot.label.position.set(0, -12 - ix * nickLine);

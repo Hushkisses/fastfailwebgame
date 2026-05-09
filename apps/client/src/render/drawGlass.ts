@@ -11,21 +11,22 @@ import { blendFogColor } from "./towerLayout";
 export const ISO_EXT_FRONT_Y = SLAB_LIP_DEPTH;
 
 /**
- * SF 유리·금속 슬래브 — 차가운 색조, 어두운 베이스.
- * 윗면(차가운 푸른빛 반사) → 앞면(검푸른 금속) → 옆면(거의 검정).
+ * 라이트 테마 슬래브 — 밝은 배경 위에서 또렷한 다크 콘크리트/금속 발판.
+ * 윗면(중간 톤, 빛 받는 면) → 앞면(어두운 톤) → 옆면(가장 어두움).
+ * 흰 배경과의 대비로 발판이 또렷하게 떠 있는 느낌.
  */
-const TOP_L = 0x4a5c72;
-const TOP_R = 0x4e4a70;
-const FRONT_L = 0x1e2632;
-const FRONT_R = 0x251e30;
-const SIDE_L = 0x0d1118;
-const SIDE_R = 0x110d16;
-const EDGE_HI = 0xa8c8e0;
-const UNDER_SHADOW = 0x000000;
+const TOP_L = 0x6c7c92;
+const TOP_R = 0x70688c;
+const FRONT_L = 0x363f50;
+const FRONT_R = 0x393346;
+const SIDE_L = 0x1d2230;
+const SIDE_R = 0x201926;
+const EDGE_HI = 0xc6d4e6;
+const UNDER_SHADOW = 0x05080c;
 
-/** 레인 네온 — 항상 은은하게, 픽 시 강하게 */
-const NEON_L = 0x5cd5ff;
-const NEON_R = 0xd87cff;
+/** 레인 네온 — 라이트 배경에서도 또렷하게 보이는 진한 톤 */
+const NEON_L = 0x1a8fd8;
+const NEON_R = 0xa83cd8;
 
 function mixRgb(a: number, b: number, t: number): number {
   if (t <= 0) return a;
@@ -335,7 +336,7 @@ export function drawFloatingSlab(
 
   /** 픽 가능 슬롯 — 네온 외곽선 + 헤일로 (3면 모두 강조) */
   if (neonPick && !broken) {
-    const neon = lane === "left" ? 0x44ddff : 0xdd77ff;
+    const neon = lane === "left" ? 0x1a8fd8 : 0xa83cd8;
 
     const haloW = (5.5 + glow * 5) * sc;
     const haloA = 0.13 + glow * 0.18;

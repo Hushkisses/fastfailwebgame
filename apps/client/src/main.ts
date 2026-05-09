@@ -36,7 +36,7 @@ function attachHintButton(net: GameNetwork, room: GameRoomLike): void {
   const b = document.createElement("button");
   b.textContent = "힌트 (10s 쿨)";
   b.style.cssText =
-    "padding:11px 16px;font-size:13px;font-weight:600;border-radius:11px;border:1px solid rgba(255,255,255,.2);cursor:pointer;color:#eaf3ff;background:rgba(22,38,94,0.6)";
+    "padding:11px 16px;font-size:13px;font-weight:700;border-radius:11px;border:1px solid #c2cfe0;cursor:pointer;color:#0d1422;background:#ffffff;box-shadow:0 2px 8px rgba(20,40,80,0.12)";
   b.onclick = () => {
     net.requestHint();
     ensureAudio();
@@ -45,7 +45,7 @@ function attachHintButton(net: GameNetwork, room: GameRoomLike): void {
   tip.textContent =
     "다음 줄 정답 유리 패널이 1초간 밝게 표시되며 다른 플레이어에게도 노출됩니다.";
   tip.style.cssText =
-    "align-self:center;max-width:220px;font-size:11px;opacity:.7;line-height:1.35;color:#dbe6ff;";
+    "align-self:center;max-width:220px;font-size:11px;line-height:1.35;color:#2a3344;font-weight:600;background:rgba(255,255,255,0.78);padding:6px 10px;border-radius:8px;border:1px solid rgba(26,143,216,0.22);";
   bar.append(b, tip);
   document.body.appendChild(bar);
 
@@ -247,7 +247,7 @@ function attachSoloBadge(): void {
   const tag = document.createElement("div");
   tag.textContent = "단독 플레이 모드 (서버 미연결)";
   tag.style.cssText =
-    "position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:60;padding:6px 12px;font-size:12px;font-weight:600;color:#ffe6c4;border:1px solid rgba(255,200,140,0.4);background:rgba(60,30,8,0.55);border-radius:999px;letter-spacing:.3px";
+    "position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:60;padding:6px 12px;font-size:12px;font-weight:700;color:#7a4a10;border:1px solid #e0c08a;background:#fff7e8;border-radius:999px;letter-spacing:.3px;box-shadow:0 2px 8px rgba(120,80,20,0.12)";
   document.body.appendChild(tag);
 }
 

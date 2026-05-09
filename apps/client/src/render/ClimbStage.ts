@@ -66,22 +66,22 @@ export class ClimbStage {
     this.title = new Text({
       text: "",
       style: {
-        fill: 0xf2f8ff,
+        fill: 0x0d1422,
         fontSize: 17,
         fontWeight: "800",
         letterSpacing: 0.5,
         lineHeight: 22,
-        stroke: { color: 0x000000, width: 5 }
+        stroke: { color: 0xffffff, width: 5 }
       }
     });
     this.stats = new Text({
       text: "",
       style: {
-        fill: 0xe0eaf4,
+        fill: 0x2a3344,
         fontSize: 12,
         fontWeight: "700",
         lineHeight: 16,
-        stroke: { color: 0x000000, width: 4 }
+        stroke: { color: 0xffffff, width: 4 }
       }
     });
     this.title.position.set(24, 22);
@@ -141,12 +141,12 @@ export class ClimbStage {
       const cap = new Text({
         text: "",
         style: {
-          fill: 0xffffff,
+          fill: 0x0d1422,
           fontSize: 13,
           fontWeight: "700",
           align: "center",
           lineHeight: 16,
-          stroke: { color: 0x050812, width: 4 }
+          stroke: { color: 0xffffff, width: 4 }
         }
       });
       cap.anchor.set(0.5, 1);
@@ -221,7 +221,7 @@ export class ClimbStage {
     const alpha = 0.2 + wobble * 0.42;
     for (let i = 0; i < this.activePickCount; i++) {
       const hit = this.pickSlots[i]!.hit;
-      const neon = this.pickIsLeft[i] ? 0x33bbee : 0xbb55ee;
+      const neon = this.pickIsLeft[i] ? 0x1a8fd8 : 0xa83cd8;
       const hitW = ISO_TOP_HW * 2 + 36;
       const hitH = ISO_TOP_HV * 2 + ISO_FRONT_DEPTH + 32;
       hit.clear();
@@ -257,7 +257,7 @@ export class ClimbStage {
     this.worldH = height;
     this.hudSpine.clear();
 
-    /** HUD 백드롭 패널 — 글자 가독성 확보 (좌상단 SF 패널) */
+    /** 라이트 테마 HUD 백드롭 — 흰색 카드 + 진한 네이비 액센트 */
     this.hudPanel.clear();
     const panelX = 12;
     const panelY = 12;
@@ -265,22 +265,20 @@ export class ClimbStage {
     const panelH = 116;
     this.hudPanel
       .roundRect(panelX, panelY, panelW, panelH, 12)
-      .fill({ color: 0x05080f, alpha: 0.78 })
-      .stroke({ width: 1.2, color: 0x4a90c0, alpha: 0.45 });
-    /** 좌측 네온 바 — 패널 액센트 */
+      .fill({ color: 0xffffff, alpha: 0.86 })
+      .stroke({ width: 1.2, color: 0x1a8fd8, alpha: 0.5 });
+    /** 좌측 액센트 바 (시안) */
     this.hudPanel
       .roundRect(panelX + 4, panelY + 8, 3, panelH - 16, 1.5)
-      .fill({ color: 0x5cd5ff, alpha: 0.9 });
-    this.hudPanel
-      .roundRect(panelX + 4, panelY + 8, 3, panelH - 16, 1.5)
-      .stroke({ width: 0.8, color: 0xaef0ff, alpha: 0.7 });
+      .fill({ color: 0x1a8fd8, alpha: 0.9 });
 
-    const band = Math.min(width, height) * 0.22;
+    /** 라이트 테마 비네트 — 매우 옅은 흰빛 페이드 (가장자리만 살짝) */
+    const band = Math.min(width, height) * 0.18;
     this.vignette.clear();
-    this.vignette.rect(0, 0, width, band).fill({ color: 0x000000, alpha: 0.55 });
-    this.vignette.rect(0, height - band, width, band).fill({ color: 0x000000, alpha: 0.7 });
-    this.vignette.rect(0, 0, band, height).fill({ color: 0x000000, alpha: 0.48 });
-    this.vignette.rect(width - band, 0, band, height).fill({ color: 0x000000, alpha: 0.48 });
+    this.vignette.rect(0, 0, width, band).fill({ color: 0xffffff, alpha: 0.32 });
+    this.vignette.rect(0, height - band, width, band).fill({ color: 0xffffff, alpha: 0.42 });
+    this.vignette.rect(0, 0, band, height).fill({ color: 0xffffff, alpha: 0.28 });
+    this.vignette.rect(width - band, 0, band, height).fill({ color: 0xffffff, alpha: 0.28 });
     this.vignette.zIndex = 95;
   }
 

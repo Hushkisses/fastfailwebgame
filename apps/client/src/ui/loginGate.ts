@@ -8,28 +8,29 @@ export function openNicknameGate(opts: {
 }): () => void {
   const veil = document.createElement("div");
   veil.style.cssText =
-    "position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 30%,rgba(40,72,140,0.35),rgba(6,10,22,0.96));font-family:system-ui,sans-serif";
+    "position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 30%,rgba(180,210,245,0.55),rgba(243,245,249,0.96));font-family:system-ui,sans-serif";
 
   const card = document.createElement("div");
   card.style.cssText =
-    "width:min(420px,calc(100vw - 32px));padding:28px 26px;background:rgba(14,18,32,0.92);border:1px solid rgba(255,255,255,0.12);border-radius:14px;box-shadow:0 28px 80px rgba(0,0,0,0.55)";
+    "width:min(420px,calc(100vw - 32px));padding:28px 26px;background:#ffffff;border:1px solid rgba(26,143,216,0.35);border-radius:14px;box-shadow:0 18px 48px rgba(20,40,80,0.18)";
 
   const h1 = document.createElement("h1");
   h1.textContent = opts.introTitle ?? "유리 다리 접속";
-  h1.style.cssText = "margin:0 0 8px;font-size:21px;color:#eef3ff;font-weight:700";
+  h1.style.cssText = "margin:0 0 8px;font-size:21px;color:#0d1422;font-weight:800";
 
   const sub = document.createElement("p");
   sub.textContent =
     "닉네임은 다리 위에 다른 플레이어에게 실시간으로 표시됩니다. (공백·특문 자동 축약)";
   sub.style.cssText =
-    "margin:0 0 18px;font-size:13px;line-height:1.45;color:rgba(238,247,255,0.7)";
+    "margin:0 0 18px;font-size:13px;line-height:1.45;color:#445064";
 
   const label = document.createElement("label");
   label.textContent = "플레이어 닉네임";
   label.style.display = "block";
   label.style.marginBottom = "6px";
   label.style.fontSize = "12px";
-  label.style.opacity = "0.85";
+  label.style.fontWeight = "700";
+  label.style.color = "#2a3344";
 
   const input = document.createElement("input");
   input.type = "text";
@@ -37,7 +38,7 @@ export function openNicknameGate(opts: {
   input.maxLength = 18;
   input.autocomplete = "username";
   input.style.cssText =
-    "width:100%;box-sizing:border-box;padding:12px 14px;margin-bottom:16px;font-size:16px;border-radius:10px;border:1px solid rgba(255,255,255,0.14);background:#090d18;color:#f4fbff";
+    "width:100%;box-sizing:border-box;padding:12px 14px;margin-bottom:16px;font-size:16px;border-radius:10px;border:1px solid #c2cfe0;background:#f8fafd;color:#0d1422";
 
   const row = document.createElement("div");
   row.style.cssText = "display:flex;gap:10px";
@@ -46,23 +47,23 @@ export function openNicknameGate(opts: {
   go.type = "button";
   go.textContent = "접속";
   go.style.cssText =
-    "flex:1;padding:14px;font-size:15px;font-weight:700;border-radius:11px;border:none;cursor:pointer;background:linear-gradient(135deg,#4b8dff,#74d8ff);color:#061018";
+    "flex:1;padding:14px;font-size:15px;font-weight:800;border-radius:11px;border:none;cursor:pointer;background:linear-gradient(135deg,#1a8fd8,#3ab5ee);color:#ffffff;box-shadow:0 4px 10px rgba(26,143,216,0.35)";
 
   const solo = document.createElement("button");
   solo.type = "button";
   solo.textContent = "단독 플레이";
   solo.style.cssText =
-    "flex:0 0 auto;padding:14px 16px;font-size:13px;font-weight:600;border-radius:11px;border:1px solid rgba(255,255,255,0.18);background:rgba(20,28,52,0.6);color:#cfdcff;cursor:pointer";
+    "flex:0 0 auto;padding:14px 16px;font-size:13px;font-weight:700;border-radius:11px;border:1px solid #c2cfe0;background:#ffffff;color:#2a3344;cursor:pointer";
   solo.style.display = opts.onSolo ? "block" : "none";
 
   const tip = document.createElement("div");
-  tip.style.cssText = "margin-top:14px;font-size:11px;opacity:.5;color:#b8cae8;line-height:1.4";
+  tip.style.cssText = "margin-top:14px;font-size:11px;color:#7080a0;line-height:1.4";
 
   tip.textContent = "Enter 또는 접속 버튼으로 진입합니다.";
 
   const errorBox = document.createElement("div");
   errorBox.style.cssText =
-    "margin-top:14px;padding:10px 12px;border-radius:9px;border:1px solid rgba(255,128,128,0.35);background:rgba(40,8,16,0.6);color:#ffd6d6;font-size:12px;line-height:1.45;display:none";
+    "margin-top:14px;padding:10px 12px;border-radius:9px;border:1px solid #e09090;background:#fff0f0;color:#a02020;font-size:12px;font-weight:600;line-height:1.45;display:none";
   errorBox.setAttribute("role", "alert");
 
   const cleanup = (): void => {
