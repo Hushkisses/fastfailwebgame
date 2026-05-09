@@ -1,5 +1,6 @@
 import { Graphics } from "pixi.js";
 import {
+  LANE_OFFSET_X,
   SLAB_HALF_WIDTH,
   SLAB_LIP_DEPTH,
   SLAB_TOP_THICK,
@@ -371,6 +372,112 @@ export function drawFloatingSlab(
       .closePath()
       .stroke({ width: outW * 0.88, color: neon, alpha: outA * 0.75 });
   }
+}
+
+/**
+ * 시작 층(1층) 전용 — 좌/우로 갈라지지 않은 평지 발판 한 개.
+ * 양쪽 lane 위치를 모두 덮는 넓은 슬래브로 그려, 사용자가 가운데에 서 있는
+ * 안전한 출발 지면처럼 보이게 한다. 평면 시점이라 옆면은 생략하고
+ * 두꺼운 윗면+앞면+양옆 모서리만 강조한다.
+ */
+export function drawStartingSlab(
+  g: Graphics,
+  cx: number,
+  cy: number,
+  opts: { fog: number; scale?: number }
+): void {
+  const { fog } = opts;
+  const sc = opts.scale ?? 1;
+
+  /** 평지: 양쪽 lane을 모두 덮는 넓이 + 양옆 약간의 여유 */
+  const hw = (LANE_OFFSET_X + SLAB_HALF_WIDTH * 1.05) * sc;
+  const topH = SLAB_TOP_THICK * sc;
+  const lipH = SLAB_LIP_DEPTH * sc;
+
+  /** 좌·우 톤의 중간 — 중립적 다크 콘크리트 색 */
+  const topC = blendFogColor(mixRgb(TOP_L, TOP_R, 0.5), fog * 0.78);
+  const frontC = blendFogColor(mixRgb(FRONT_L, FRONT_R, 0.5), fog * 0.85);
+  const edgeHi = blendFogColor(EDGE_HI, fog * 0.55);
+
+  /** skewX = 0 → 평면 직사각형 윗면 */
+  const yBack = cy - topH * 0.95;
+  const yTop = cy + topH * 1.05;
+  const yBot = yTop + lipH;
+
+  /** 평지 슬래브 아래 부드러운 그림자 (가운데 한 개의 큰 코어) */
+  const shY = yBot + lipH * 0.42;
+  g.ellipse(cx, shY, hw * 0.9, lipH * 0.22).fill({ color: 0x000000, alpha: 0.42 });
+  g.ellipse(cx, shY, hw * 0.62, lipH * 0.13).fill({ color: 0x000000, alpha: 0.34 });
+
+  /** 시작 발판 아래로 흐려지는 안개 */
+  if (fog < 0.7) {
+    const mistA = (1 - fog) * 0.2;
+    g.ellipse(cx, yBot + lipH * 0.6, hw * 0.78, lipH * 0.22).fill({ color: 0x070b14, alpha: mistA });
+    g.ellipse(cx, yBot + lipH * 2.2, hw * 0.5, lipH * 0.18).fill({ color: 0x040810, alpha: mistA * 0.7 });
+  }
+
+  /** ① 윗면 — 평지 직사각형 (다크 콘크리트) */
+  g.rect(cx - hw, yBack, hw * 2, yTop - yBack).fill({ color: topC, alpha: 0.95 });
+
+  /** 윗면 유리 반사 — 비스듬한 밝은 띠 */
+  g.moveTo(cx - hw + hw * 0.16, yTop - topH * 0.05)
+    .lineTo(cx + hw * 0.55, yBack + topH * 0.32)
+    .stroke({ width: Math.max(1.0, 1.6 * sc), color: 0xc8e0f4, alpha: 0.2 });
+
+  /** ② 앞면 — 두꺼운 벽 */
+  g.rect(cx - hw, yTop, hw * 2, lipH).fill({ color: frontC, alpha: 0.97 });
+
+  /** 앞면 상단 미세한 빛 띠 — 유리 모서리 광 */
+  fillQuad(
+    g,
+    cx - hw * 0.99, yTop + 0.5,
+    cx + hw * 0.99, yTop + 0.5,
+    cx + hw * 0.99, yTop + lipH * 0.18,
+    cx - hw * 0.99, yTop + lipH * 0.18,
+    { color: 0x4a6a86, alpha: 0.2 }
+  );
+
+  /** 앞면 하단 어두운 그라데이션 — 두께·밀도감 */
+  fillQuad(
+    g,
+    cx - hw * 0.99, yBot - lipH * 0.4,
+    cx + hw * 0.99, yBot - lipH * 0.4,
+    cx + hw, yBot,
+    cx - hw, yBot,
+    { color: UNDER_SHADOW, alpha: 0.5 }
+  );
+
+  /** 윗면 뒷 모서리 — 빛이 닿는 캐치라인 */
+  g.moveTo(cx - hw, yBack)
+    .lineTo(cx + hw, yBack)
+    .stroke({ width: Math.max(1.0, 1.6 * sc), color: edgeHi, alpha: 0.4 });
+
+  /** 윗면-앞면 경계 (밟을 수 있는 가장자리) */
+  g.moveTo(cx - hw, yTop)
+    .lineTo(cx + hw, yTop)
+    .stroke({ width: Math.max(1.3, 2.0 * sc), color: edgeHi, alpha: 0.6 });
+
+  /** 앞면 하단 — 깊은 그림자 라인 */
+  g.moveTo(cx - hw, yBot)
+    .lineTo(cx + hw, yBot)
+    .stroke({ width: Math.max(1.5, 2.4 * sc), color: 0x000000, alpha: 0.55 });
+
+  /** 좌·우 측면 외곽 — 두께 표현 */
+  g.moveTo(cx - hw, yTop).lineTo(cx - hw, yBot).stroke({
+    width: Math.max(1.0, 1.4 * sc), color: 0x000000, alpha: 0.5
+  });
+  g.moveTo(cx + hw, yTop).lineTo(cx + hw, yBot).stroke({
+    width: Math.max(1.0, 1.4 * sc), color: 0x000000, alpha: 0.5
+  });
+
+  /** 양 끝 lane 네온 — 좌·우 lane 위치 위에 은은한 색 단서 (다음 층 lane 색과 연결) */
+  const accentLen = hw * 0.18;
+  g.moveTo(cx - hw, yTop).lineTo(cx - hw + accentLen, yTop).stroke({
+    width: Math.max(0.9, 1.4 * sc), color: NEON_L, alpha: 0.34
+  });
+  g.moveTo(cx + hw - accentLen, yTop).lineTo(cx + hw, yTop).stroke({
+    width: Math.max(0.9, 1.4 * sc), color: NEON_R, alpha: 0.34
+  });
 }
 
 /** 호환: 기존 이름 → 평판 슬래브 */

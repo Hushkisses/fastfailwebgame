@@ -2,7 +2,7 @@ import { Application, Container, Graphics, Text } from "pixi.js";
 import { CLIENT_GOAL_FLOOR } from "../config/climbConfig";
 import type { HintFlash } from "../hint/collectHints";
 import type { PickTarget } from "../logic/pickPath";
-import { drawFloatingSlab, drawCrackBurst, drawSideGlassShards } from "./drawGlass";
+import { drawFloatingSlab, drawStartingSlab, drawCrackBurst, drawSideGlassShards } from "./drawGlass";
 import {
   BRIDGE_MARGIN,
   floorWorldY,
@@ -306,6 +306,15 @@ export class TowerWorldView {
 
     for (let c = hi; c >= lo; c--) {
       const fog = columnFog(c, inp.selfBestReached, inp.selfFloor);
+      /**
+       * 시작 층(1층) — 좌/우로 갈라지지 않은 평지 발판 한 개.
+       * 시작 위치는 함정/픽 강조 대상이 아니므로 단순 와이드 슬래브로 그린다.
+       */
+      if (c === 1) {
+        const tw = tileWorldPos(c, "left", vf);
+        drawStartingSlab(this.paneG, 0, tw.y, { fog, scale: tw.scale });
+        continue;
+      }
       for (const lane of ["left", "right"] as const) {
         const kk = this.k(c, lane);
         const tw = tileWorldPos(c, lane, vf);
@@ -452,6 +461,8 @@ export class TowerWorldView {
 
       const twBase = tileWorldPos(row, side, inp.selfFloor);
       const n = arr.length;
+      /** 시작 층(1층) — 좌/우 분리 발판이 아니라 평지 한 개이므로 아바타도 가운데(x=0) */
+      const baseX = row === 1 ? 0 : twBase.x;
 
       arr.forEach((pl, ix) => {
         if (si >= this.slots.length) return;
@@ -460,7 +471,7 @@ export class TowerWorldView {
 
         slot.root.visible = true;
         slot.root.scale.set(twBase.scale);
-        slot.root.position.set(twBase.x, twBase.y - lift);
+        slot.root.position.set(baseX, twBase.y - lift);
         slot.root.zIndex = -row * 800 + ix;
 
         slot.body.position.set(0, 0);
