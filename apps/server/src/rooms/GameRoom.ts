@@ -160,14 +160,35 @@ export class GameRoom extends Room<GameState> {
     for (const id of hintIds) {
       this.state.hints.delete(id);
     }
-    this.state.players.forEach((player) => {
+    const players: PlayerState[] = [];
+    this.state.players.forEach((p) => {
+      players.push(p);
+    });
+    players.sort((a, b) => {
+      if (b.bestFloorReached !== a.bestFloorReached) {
+        return b.bestFloorReached - a.bestFloorReached;
+      }
+      if (a.failCount !== b.failCount) {
+        return a.failCount - b.failCount;
+      }
+      if (a.failEnergy !== b.failEnergy) {
+        return a.failEnergy - b.failEnergy;
+      }
+      return String(a.name).localeCompare(String(b.name));
+    });
+
+    for (let i = 0; i < players.length; i++) {
+      const player = players[i]!;
       const row = new RoundStatEntry();
+      row.rank = i + 1;
       row.name = player.name;
+      row.failCount = player.failCount;
       row.bestFloorReached = player.bestFloorReached;
+      row.currentFloor = player.floor;
       row.failEnergy = player.failEnergy;
       row.hasWon = player.hasWon;
       this.state.lastRoundStats.push(row);
-    });
+    }
   }
 
   onJoin(client: Client, options?: JoinOptions): void {

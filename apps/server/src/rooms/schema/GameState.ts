@@ -42,6 +42,11 @@ export class RoundStatEntry extends Schema {
   @type("number") bestFloorReached = 1;
   @type("number") failEnergy = 0;
   @type("boolean") hasWon = false;
+  /** 공식 순위 (최고층↓, 실패횟수↑, 실패에너지↑) */
+  @type("number") rank = 0;
+  @type("number") failCount = 0;
+  /** 종료 시점 현재 층 */
+  @type("number") currentFloor = 1;
 }
 
 export class GameState extends Schema {

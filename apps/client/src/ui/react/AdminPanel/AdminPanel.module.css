@@ -17,8 +17,8 @@
 }
 
 .card {
-  width: min(520px, calc(100vw - 24px));
-  padding: 26px 24px;
+  width: min(1080px, calc(100vw - 32px));
+  padding: 26px 28px;
   background: #ffffff;
   border: 1px solid rgba(100, 70, 180, 0.35);
   border-radius: 14px;
@@ -82,15 +82,22 @@
 }
 
 .statsTitle {
-  margin: 8px 0 10px;
+  margin: 8px 0 6px;
   font-size: 14px;
   font-weight: 800;
   color: #0d1422;
 }
 
+.sortHint {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #5a6680;
+  line-height: 1.4;
+}
+
 .tableWrap {
   overflow: auto;
-  max-height: min(360px, 50vh);
+  max-height: min(480px, 62vh);
   border: 1px solid #d8e0ee;
   border-radius: 10px;
 }
@@ -98,7 +105,8 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
+  min-width: 720px;
 }
 
 .th,
@@ -114,6 +122,32 @@
   color: #2a3344;
   position: sticky;
   top: 0;
+  padding: 0;
+  vertical-align: bottom;
+}
+
+.thBtn {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-weight: 800;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.thBtn:hover {
+  background: rgba(26, 143, 216, 0.08);
+}
+
+.thNum .thBtn {
+  text-align: right;
 }
 
 .tdNum {
