@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { useEffect, useRef, useState } from "react";
+import { serverHttpBaseFromEnv } from "../../../config/serverHttpBase";
 import { locales, setStoredLocale, t as rawT, type Locale } from "../../../i18n";
 import { useHudStore } from "../../../state/hudStore";
 import styles from "./NicknameGate.module.css";
@@ -7,6 +8,7 @@ import styles from "./NicknameGate.module.css";
 export interface NicknameGateProps {
   onJoin: (nickname: string, locale: Locale) => Promise<void> | void;
   onSolo?: (nickname: string, locale: Locale) => Promise<void> | void;
+  onAdminSession?: (password: string, locale: Locale) => Promise<void> | void;
 }
 
 function sanitizeNickname(s: string, fallback: string): string {
@@ -15,18 +17,51 @@ function sanitizeNickname(s: string, fallback: string): string {
   return v.length ? v.slice(0, 18) : fallback;
 }
 
-export function NicknameGate({ onJoin, onSolo }: NicknameGateProps): ReactElement {
+type GateStep = "nickname" | "password";
+
+export function NicknameGate({ onJoin, onSolo, onAdminSession }: NicknameGateProps): ReactElement {
   const locale = useHudStore((s) => s.locale);
   const setLocale = useHudStore((s) => s.setLocale);
   const t = (key: string, vars?: Record<string, string | number>): string => rawT(locale, key, vars);
 
   const [nickname, setNickname] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [gateStep, setGateStep] = useState<GateStep>("nickname");
+  const [adminTrigger, setAdminTrigger] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (gateStep === "password") {
+      passwordRef.current?.focus();
+    }
+  }, [gateStep]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const base = serverHttpBaseFromEnv();
+        const res = await fetch(`${base}/admin/meta`);
+        if (!res.ok) return;
+        const data = (await res.json()) as { trigger?: unknown };
+        if (cancelled) return;
+        if (typeof data.trigger === "string" && data.trigger.trim().length > 0) {
+          setAdminTrigger(data.trigger.trim());
+        }
+      } catch {
+        /* 서버 미기동 시 관리자 트리거 비활성 */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const onLocaleChange = (next: Locale): void => {
@@ -39,6 +74,13 @@ export function NicknameGate({ onJoin, onSolo }: NicknameGateProps): ReactElemen
     setSubmitting(true);
     setError(null);
     try {
+      const raw = nickname.trim();
+      if (adminTrigger && onAdminSession && raw === adminTrigger) {
+        setGateStep("password");
+        setSubmitting(false);
+        return;
+      }
+
       const fallback = `${t("lobby.defaultNickname")}-${Math.floor(Math.random() * 99999)}`;
       const sanitized = sanitizeNickname(nickname || fallback, t("lobby.defaultNickname"));
       setStoredLocale(locale);
@@ -47,6 +89,20 @@ export function NicknameGate({ onJoin, onSolo }: NicknameGateProps): ReactElemen
       setSubmitting(false);
       setError(t("lobby.connectError"));
       console.warn("[NicknameGate] connect failed", e);
+    }
+  };
+
+  const submitPassword = async (): Promise<void> => {
+    if (!onAdminSession) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      setStoredLocale(locale);
+      await onAdminSession(adminPassword, locale);
+    } catch (e) {
+      setSubmitting(false);
+      setError(t("admin.passwordError"));
+      console.warn("[NicknameGate] admin session failed", e);
     }
   };
 
@@ -65,6 +121,65 @@ export function NicknameGate({ onJoin, onSolo }: NicknameGateProps): ReactElemen
       console.warn("[NicknameGate] solo failed", e);
     }
   };
+
+  const backToNickname = (): void => {
+    setGateStep("nickname");
+    setAdminPassword("");
+    setError(null);
+  };
+
+  if (gateStep === "password") {
+    return (
+      <div className={styles.veil}>
+        <div className={styles.card}>
+          <h1 className={styles.title}>{t("admin.passwordTitle")}</h1>
+          <p className={styles.subtitle}>{t("admin.passwordSubtitle")}</p>
+
+          <label className={styles.label} htmlFor="gate-admin-password">
+            {t("admin.passwordLabel")}
+          </label>
+          <input
+            id="gate-admin-password"
+            ref={passwordRef}
+            type="password"
+            className={styles.input}
+            autoComplete="current-password"
+            value={adminPassword}
+            disabled={submitting}
+            onChange={(ev) => setAdminPassword(ev.target.value)}
+            onKeyDown={(ev) => {
+              if (ev.key === "Enter") void submitPassword();
+            }}
+          />
+
+          <div className={styles.row}>
+            <button
+              type="button"
+              className={styles.joinButton}
+              disabled={submitting || !adminPassword.length}
+              onClick={() => void submitPassword()}
+            >
+              {t("admin.passwordSubmit")}
+            </button>
+            <button
+              type="button"
+              className={styles.soloButton}
+              disabled={submitting}
+              onClick={backToNickname}
+            >
+              {t("admin.passwordBack")}
+            </button>
+          </div>
+
+          {error && (
+            <div className={styles.error} role="alert">
+              {error}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.veil}>

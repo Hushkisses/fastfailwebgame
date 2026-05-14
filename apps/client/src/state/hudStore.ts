@@ -1,9 +1,12 @@
 import { create } from "zustand";
 import { getStoredLocale, type Locale } from "../i18n";
+import type { GameRoomLike } from "../net/colyseus";
 import type { ClimbHudModel } from "../render/ClimbStage";
 import type { BoardRow } from "../ui/react/Leaderboard/boardTypes";
 
-export type AppMode = "gate" | "loading" | "solo" | "multi";
+export type AppMode = "gate" | "loading" | "solo" | "multi" | "admin";
+
+export type MultiMatchPhase = "waiting" | "playing" | "ended";
 
 function modelsEqual(a: ClimbHudModel, b: ClimbHudModel): boolean {
   return (
@@ -47,6 +50,10 @@ export interface HudState {
   hintCooldownUntil: number;
   /** session 시작 시 main.ts 가 주입하는 액션 핸들러 */
   onRequestHint: () => void;
+  /** 관리자 패널에서 사용하는 Colyseus 룸 (멀티 전용) */
+  adminRoom: GameRoomLike | null;
+  /** 멀티 서버 `matchPhase` 미러 (대기 배너용) */
+  multiMatchPhase: MultiMatchPhase;
 
   setLocale: (locale: Locale) => void;
   setMode: (mode: AppMode) => void;
@@ -54,6 +61,8 @@ export interface HudState {
   setLeaderRows: (rows: BoardRow[], selfId: string) => void;
   setHintCooldownUntil: (atMs: number) => void;
   setOnRequestHint: (fn: () => void) => void;
+  setAdminRoom: (room: GameRoomLike | null) => void;
+  setMultiMatchPhase: (phase: MultiMatchPhase) => void;
   reset: () => void;
 }
 
@@ -77,6 +86,8 @@ export const useHudStore = create<HudState>((set, get) => ({
   selfSessionId: "",
   hintCooldownUntil: 0,
   onRequestHint: () => {},
+  adminRoom: null,
+  multiMatchPhase: "waiting",
 
   setLocale: (locale) => set({ locale }),
   setMode: (mode) => {
@@ -98,12 +109,19 @@ export const useHudStore = create<HudState>((set, get) => ({
     set({ hintCooldownUntil });
   },
   setOnRequestHint: (onRequestHint) => set({ onRequestHint }),
+  setAdminRoom: (adminRoom) => set({ adminRoom }),
+  setMultiMatchPhase: (multiMatchPhase) => {
+    if (get().multiMatchPhase === multiMatchPhase) return;
+    set({ multiMatchPhase });
+  },
   reset: () =>
     set({
       mode: "gate",
       model: defaultModel(),
       leaderRows: [],
       selfSessionId: "",
-      hintCooldownUntil: 0
+      hintCooldownUntil: 0,
+      adminRoom: null,
+      multiMatchPhase: "waiting"
     })
 }));

@@ -36,8 +36,19 @@ export class HintResult extends Schema {
   @type("number") expiresAt = 0;
 }
 
+/** 라운드 종료 시점 스냅샷 (관리자 통계창용) */
+export class RoundStatEntry extends Schema {
+  @type("string") name = "";
+  @type("number") bestFloorReached = 1;
+  @type("number") failEnergy = 0;
+  @type("boolean") hasWon = false;
+}
+
 export class GameState extends Schema {
   @type({ map: PlayerState }) players = new MapSchema<PlayerState>();
   @type([TrailMark]) trails = new ArraySchema<TrailMark>();
   @type({ map: HintResult }) hints = new MapSchema<HintResult>();
+  /** "waiting" | "playing" | "ended" — 관리자 시작 전·종료 후에는 타일·힌트 비활성 */
+  @type("string") matchPhase = "waiting";
+  @type([RoundStatEntry]) lastRoundStats = new ArraySchema<RoundStatEntry>();
 }

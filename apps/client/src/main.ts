@@ -160,8 +160,17 @@ async function startSession(
     const nowMs = Date.now();
     const respawnLockedServer = !!(model.respawnAvailableAt && nowMs < model.respawnAvailableAt);
 
+    const stateRecord = room.state as Record<string, unknown>;
+    const rawPhase = stateRecord.matchPhase;
+    const matchPhase =
+      rawPhase === "ended" ? "ended" : rawPhase === "playing" ? "playing" : "waiting";
+    const roundActive = mode !== "multi" || matchPhase === "playing";
+    if (mode === "multi") {
+      useHudStore.getState().setMultiMatchPhase(matchPhase);
+    }
+
     const pickTargets =
-      !model.hasWon && !respawnLockedServer
+      roundActive && !model.hasWon && !respawnLockedServer
         ? buildPickTargets(branchPreview, model.floor, model.jumpPower, trapKnown)
         : [];
 
@@ -242,5 +251,13 @@ mountReactHud({
   onSolo: async (nickname, locale) => {
     useHudStore.getState().setLocale(locale);
     await startSession(nickname, locale, "solo");
+  },
+  onAdminSession: async (password, locale) => {
+    useHudStore.getState().setLocale(locale);
+    document.documentElement.lang = htmlLang(locale);
+    const net = new GameNetwork();
+    const room = await net.connectAdmin(password);
+    useHudStore.getState().setAdminRoom(room);
+    useHudStore.getState().setMode("admin");
   }
 });

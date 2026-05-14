@@ -1,0 +1,137 @@
+.veil {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(
+    ellipse at 50% 25%,
+    rgba(120, 90, 200, 0.35),
+    rgba(243, 245, 249, 0.97)
+  );
+  font-family: system-ui, sans-serif;
+  pointer-events: auto;
+  overflow: auto;
+  padding: 24px 12px;
+}
+
+.card {
+  width: min(520px, calc(100vw - 24px));
+  padding: 26px 24px;
+  background: #ffffff;
+  border: 1px solid rgba(100, 70, 180, 0.35);
+  border-radius: 14px;
+  box-shadow: 0 18px 48px rgba(40, 20, 80, 0.16);
+  box-sizing: border-box;
+}
+
+.title {
+  margin: 0 0 6px;
+  font-size: 20px;
+  color: #0d1422;
+  font-weight: 800;
+}
+
+.phase {
+  margin: 0 0 16px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #5a4a8a;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.btn {
+  flex: 1;
+  min-width: 120px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 800;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btnPrimary {
+  background: linear-gradient(135deg, #6a48c8, #8b6ae8);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(90, 60, 180, 0.35);
+}
+
+.btnDanger {
+  background: linear-gradient(135deg, #c84848, #e07070);
+  color: #fff;
+}
+
+.btnGhost {
+  background: #f0f2f6;
+  color: #2a3344;
+  border: 1px solid #c8d0e0;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.statsTitle {
+  margin: 8px 0 10px;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0d1422;
+}
+
+.tableWrap {
+  overflow: auto;
+  max-height: min(360px, 50vh);
+  border: 1px solid #d8e0ee;
+  border-radius: 10px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.th,
+.td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e8edf5;
+}
+
+.th {
+  background: #f4f6fb;
+  font-weight: 800;
+  color: #2a3344;
+  position: sticky;
+  top: 0;
+}
+
+.tdNum {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.empty {
+  margin: 0;
+  padding: 14px;
+  font-size: 13px;
+  color: #7080a0;
+  text-align: center;
+}
+
+.tip {
+  margin-top: 14px;
+  font-size: 11px;
+  color: #7080a0;
+  line-height: 1.45;
+}

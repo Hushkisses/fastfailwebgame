@@ -1,0 +1,30 @@
+.banner {
+  position: fixed;
+  left: 50%;
+  top: 12px;
+  transform: translateX(-50%);
+  z-index: 70;
+  max-width: min(520px, calc(100vw - 24px));
+  padding: 12px 18px;
+  border-radius: 12px;
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  text-align: center;
+  color: #0d1422;
+  background: rgba(255, 248, 220, 0.96);
+  border: 1px solid rgba(200, 160, 60, 0.55);
+  box-shadow: 0 8px 24px rgba(40, 30, 10, 0.12);
+  pointer-events: none;
+}
+
+.waiting {
+  background: rgba(230, 242, 255, 0.96);
+  border-color: rgba(80, 140, 210, 0.45);
+}
+
+.ended {
+  background: rgba(255, 236, 236, 0.96);
+  border-color: rgba(200, 100, 100, 0.45);
+}

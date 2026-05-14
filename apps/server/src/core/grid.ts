@@ -98,6 +98,11 @@ export class LevelBranchGenerator {
 
   }
 
+  /** 라운드 재시작 시 함정 분기를 새로 뽑기 위해 캐시를 비웁니다. */
+  public clearBranches(): void {
+    this.branches.clear();
+  }
+
 }
 
 
