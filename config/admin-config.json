@@ -1,4 +1,4 @@
 {
-  "trigger": "__FG_ADMIN_TRIGGER__",
+  "trigger": "admin",
   "password": "changeme"
 }
