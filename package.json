@@ -5,7 +5,9 @@
   "workspaces": [
     "apps/server",
     "apps/client",
-    "apps/loadtest"
+    "apps/loadtest",
+    "apps/offline-sim",
+    "apps/online-sim"
   ],
   "scripts": {
     "loadtest": "npm run loadtest -w @game/loadtest --",
@@ -14,6 +16,8 @@
     "dev:client": "npm run dev --workspace @game/client",
     "build": "npm run build --workspaces",
     "build:prod": "npm run build --workspace @game/client",
-    "test": "npm run test --workspace @game/server"
+    "test": "npm run test --workspace @game/server",
+    "sim:offline": "npm run sim -w @game/offline-sim",
+    "sim:online": "npm run sim -w @game/online-sim"
   }
 }

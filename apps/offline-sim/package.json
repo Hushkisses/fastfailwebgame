@@ -1,0 +1,14 @@
+{
+  "name": "@game/offline-sim",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sim": "tsx src/run.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}

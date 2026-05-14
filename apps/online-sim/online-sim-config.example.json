@@ -1,0 +1,39 @@
+{
+  "url": "ws://localhost:2567",
+  "adminPassword": "",
+  "joinStaggerMs": 40,
+  "roundDurationMs": 90000,
+  "outputDir": "out",
+  "tickMs": 80,
+  "groups": [
+    {
+      "id": "conservative",
+      "label": "보수적",
+      "count": 33,
+      "strategy": "random",
+      "minThinkMs": 800,
+      "maxThinkMs": 2600,
+      "hintChance": 0.15
+    },
+    {
+      "id": "bold",
+      "label": "도전적",
+      "count": 33,
+      "strategy": "random",
+      "minThinkMs": 90,
+      "maxThinkMs": 380,
+      "hintChance": 0.025
+    },
+    {
+      "id": "opportunist",
+      "label": "기회주의",
+      "count": 33,
+      "strategy": "opportunistic",
+      "minThinkMs": 180,
+      "maxThinkMs": 750,
+      "hintChance": 0.07,
+      "firstMoveEpsilon": 0.02,
+      "preferSingleStep": true
+    }
+  ]
+}
