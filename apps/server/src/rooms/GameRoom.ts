@@ -66,7 +66,8 @@ export class GameRoom extends Room<GameState> {
 
       const payload = {
         id: client.sessionId,
-        ...result
+        ...result,
+        ...(result.success ? { successPath: path } : {})
       };
 
       if (result.trailMark) {

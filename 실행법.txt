@@ -22,3 +22,5 @@ cd "C:\Users\Segwon\Desktop\창미기 테스트"
 
 
 다른 커멘드 열고 npm run loadtest
+
+npm run sim:online

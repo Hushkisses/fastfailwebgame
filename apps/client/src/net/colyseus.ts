@@ -16,6 +16,8 @@ export interface ResolutionEvent {
   success: boolean;
   fromFloor: number;
   toFloor: number;
+  /** 성공 시 서버가 보내는 경로(층별 L/R). 멀티 스텝일 때 관측용. */
+  successPath?: ("left" | "right")[];
   blockedDuplicate?: boolean;
   blockedWall?: boolean;
   gainedEnergy?: number;

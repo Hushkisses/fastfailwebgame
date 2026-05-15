@@ -99,6 +99,7 @@ function wireResolution(
   room.onMessage("resolution", (msg: unknown) => {
     const m = msg as ResolutionPayload;
     ledger.noteResolution(m);
+    ledger.syncFromRoom(room);
     if (m.blockedDuplicate && m.id) {
       botBySession.get(m.id)?.onBlockedDuplicate();
     }
@@ -229,8 +230,10 @@ async function main(): Promise<void> {
 
     const tick = setInterval(() => {
       const now = Date.now();
-      if (bots[0]) ledger.syncFromRoom(bots[0].room);
-      for (const b of bots) b.tick(ledger, sessionOrder, now);
+      for (const b of bots) {
+        if (bots[0]) ledger.syncFromRoom(bots[0].room);
+        b.tick(ledger, sessionOrder, now);
+      }
     }, cfg.tickMs);
 
     await sleep(cfg.roundDurationMs);
@@ -259,8 +262,10 @@ async function main(): Promise<void> {
 
   const tick = setInterval(() => {
     const now = Date.now();
-    ledger.syncFromRoom(bots[0]!.room);
-    for (const b of bots) b.tick(ledger, sessionOrder, now);
+    for (const b of bots) {
+      if (bots[0]) ledger.syncFromRoom(bots[0].room);
+      b.tick(ledger, sessionOrder, now);
+    }
   }, cfg.tickMs);
 
   await sleep(cfg.roundDurationMs);

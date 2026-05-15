@@ -8,7 +8,7 @@
   "groups": [
     {
       "id": "conservative",
-      "label": "보수적",
+      "label": "conservative",
       "count": 33,
       "strategy": "random",
       "minThinkMs": 800,
@@ -17,7 +17,7 @@
     },
     {
       "id": "bold",
-      "label": "도전적",
+      "label": "bold",
       "count": 33,
       "strategy": "random",
       "minThinkMs": 400,
@@ -26,7 +26,7 @@
     },
     {
       "id": "opportunist",
-      "label": "기회주의",
+      "label": "opportunist",
       "count": 33,
       "strategy": "opportunistic",
       "minThinkMs": 180,

@@ -6,6 +6,8 @@ export interface ResolutionPayload {
   success: boolean;
   fromFloor: number;
   toFloor: number;
+  /** 성공 시 서버가 보내는 경로 — 멀티 스텝이어도 층마다 안전한 쪽을 기록할 수 있음 */
+  successPath?: ("left" | "right")[];
   trailMark?: { floor: number; side: string };
   blockedDuplicate?: boolean;
   respawnLocked?: boolean;
@@ -55,8 +57,19 @@ export class ObservationLedger {
         this.badSideByFloor.set(msg.trailMark.floor, sd);
       }
     }
-    if (msg.success && msg.toFloor === msg.fromFloor + 1 && msg.id) {
-      this.pendingSuccessReads.push({ playerId: msg.id, fromFloor: msg.fromFloor });
+    if (msg.success) {
+      const span = msg.toFloor - msg.fromFloor;
+      const path = msg.successPath;
+      if (Array.isArray(path) && path.length > 0 && path.length === span) {
+        for (let i = 0; i < path.length; i++) {
+          const s = path[i];
+          if (s === "left" || s === "right") {
+            this.safeSideByFloor.set(msg.fromFloor + i, s);
+          }
+        }
+      } else if (span === 1 && msg.id) {
+        this.pendingSuccessReads.push({ playerId: msg.id, fromFloor: msg.fromFloor });
+      }
     }
   }
 
@@ -148,6 +161,30 @@ export function shouldWaitForDirectPredecessor(
   return pred.floor === me.floor;
 }
 
+/**
+ * 같은 층에서 바로 앞 슬롯은 없는데, 더 낮은 슬롯 중 누군가가 `myFloor + 1`에 있으면
+ * (대개 한 칸 앞서 간 경우) 그 사람의 `currentSide`를 그 층의 안전한 쪽으로 본다.
+ * `successPath`로 레저가 이미 채워지면 위쪽에서 `safeSideByFloor`가 먼저 잡힌다.
+ */
+export function inferSafeSideFromNearestPlayerOneFloorAbove(
+  mySlot: number,
+  sessionOrder: string[],
+  state: GameStateLike,
+  myFloor: number
+): Side | null {
+  const target = myFloor + 1;
+  for (let i = mySlot - 1; i >= 0; i--) {
+    const oid = sessionOrder[i]!;
+    const p = state.players.get(oid);
+    if (!p || p.hasWon) continue;
+    if (p.floor === target) {
+      const cs = p.currentSide;
+      if (cs === "left" || cs === "right") return cs;
+    }
+  }
+  return null;
+}
+
 export function pickOpportunisticSide(
   myId: string,
   mySlot: number,
@@ -174,6 +211,9 @@ export function pickOpportunisticSide(
 
   const bad = ledger.badSideByFloor.get(f);
   if (bad === "left" || bad === "right") return opposite(bad);
+
+  const inferred = inferSafeSideFromNearestPlayerOneFloorAbove(mySlot, sessionOrder, state, f);
+  if (inferred === "left" || inferred === "right") return inferred;
 
   if (rnd() < spec.firstMoveEpsilon) {
     return rndSide(rnd);
