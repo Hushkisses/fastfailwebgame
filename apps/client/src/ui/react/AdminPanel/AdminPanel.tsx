@@ -80,6 +80,21 @@ function readPhase(state: unknown): string {
   return "waiting";
 }
 
+/** `players` 맵에 올라간 실제 플레이어 수(관리자 클라이언트는 제외). */
+function countPlayersInRoom(state: unknown): number {
+  const s = state as Record<string, unknown> | null;
+  const players = s?.players as
+    | { size?: number; forEach?: (cb: (value: unknown, key: string) => void) => void }
+    | undefined;
+  if (!players || typeof players !== "object") return 0;
+  if (typeof players.size === "number") return players.size;
+  let n = 0;
+  players.forEach?.(() => {
+    n += 1;
+  });
+  return n;
+}
+
 export function AdminPanel(): ReactElement | null {
   const locale = useHudStore((s) => s.locale) as Locale;
   const room = useHudStore((s) => s.adminRoom);
@@ -108,6 +123,11 @@ export function AdminPanel(): ReactElement | null {
   }, [room, forceUpdate]);
 
   const phase = room ? readPhase(room.state) : "waiting";
+  const connectedPlayerCount = useMemo(() => {
+    if (!room) return 0;
+    return countPlayersInRoom(room.state);
+  }, [room, phase, bump]);
+
   const sortedStats = useMemo(() => {
     if (!room) return [];
     const rows = readStatsFromState(room.state);
@@ -157,6 +177,11 @@ export function AdminPanel(): ReactElement | null {
             : phase === "playing"
               ? t("admin.phasePlaying")
               : t("admin.phaseWaiting")}
+        </p>
+        <p className={styles.connected}>
+          {phase === "waiting"
+            ? t("admin.waitingPlayerCount", { count: connectedPlayerCount })
+            : t("admin.connectedPlayerCount", { count: connectedPlayerCount })}
         </p>
 
         <div className={styles.row}>

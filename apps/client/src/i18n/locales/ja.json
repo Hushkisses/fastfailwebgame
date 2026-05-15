@@ -42,6 +42,8 @@
   "admin.phaseWaiting": "開始待ち",
   "admin.phasePlaying": "進行中",
   "admin.phaseEnded": "終了",
+  "admin.waitingPlayerCount": "開始待ちの接続プレイヤー: {count}人",
+  "admin.connectedPlayerCount": "現在の部屋のプレイヤー: {count}人",
   "admin.startRound": "ラウンド開始",
   "admin.endRound": "ラウンド終了",
   "admin.backToLobby": "ロビーへ",

@@ -111,7 +111,27 @@ function rndSide(rnd: () => number): Side {
   return rnd() < 0.5 ? "left" : "right";
 }
 
-export function blockingAheadSameFloor(
+/**
+ * 같은 층에서 입장 순서상 바로 앞 사람: `mySlot`보다 작은 인덱스 중,
+ * 현재 `myFloor`에 있는 플레이어 중 **가장 가까운(슬롯이 큰)** 한 명.
+ */
+export function findDirectPredecessorOnSameFloor(
+  mySlot: number,
+  sessionOrder: string[],
+  state: GameStateLike,
+  myFloor: number
+): string | null {
+  for (let i = mySlot - 1; i >= 0; i--) {
+    const oid = sessionOrder[i]!;
+    const p = state.players.get(oid);
+    if (!p || p.hasWon) continue;
+    if (p.floor === myFloor) return oid;
+  }
+  return null;
+}
+
+/** 바로 앞 사람이 같은 층에서 아직 선택(이동) 전이면 true → 이번 틱은 대기 */
+export function shouldWaitForDirectPredecessor(
   myId: string,
   mySlot: number,
   sessionOrder: string[],
@@ -120,16 +140,12 @@ export function blockingAheadSameFloor(
 ): boolean {
   const me = state.players.get(myId);
   if (!me || me.hasWon) return false;
-  const myF = me.floor;
-  for (let idx = 0; idx < mySlot; idx++) {
-    const oid = sessionOrder[idx]!;
-    const p = state.players.get(oid);
-    if (!p || p.hasWon) continue;
-    if (p.floor !== myF) continue;
-    if (p.respawnAvailableAt > now) continue;
-    return true;
-  }
-  return false;
+  const predId = findDirectPredecessorOnSameFloor(mySlot, sessionOrder, state, me.floor);
+  if (!predId) return false;
+  const pred = state.players.get(predId);
+  if (!pred || pred.hasWon) return false;
+  if (pred.respawnAvailableAt > now) return false;
+  return pred.floor === me.floor;
 }
 
 export function pickOpportunisticSide(
@@ -148,12 +164,8 @@ export function pickOpportunisticSide(
   const now = Date.now();
   if (me.respawnAvailableAt > now) return null;
 
-  if (blockingAheadSameFloor(myId, mySlot, sessionOrder, state, now)) {
+  if (shouldWaitForDirectPredecessor(myId, mySlot, sessionOrder, state, now)) {
     return null;
-  }
-
-  if (rnd() < spec.firstMoveEpsilon) {
-    return rndSide(rnd);
   }
 
   const f = me.floor;
@@ -162,6 +174,10 @@ export function pickOpportunisticSide(
 
   const bad = ledger.badSideByFloor.get(f);
   if (bad === "left" || bad === "right") return opposite(bad);
+
+  if (rnd() < spec.firstMoveEpsilon) {
+    return rndSide(rnd);
+  }
 
   const ownBad = ownKnownBadSides(me, f);
   const candidates: Side[] = [];

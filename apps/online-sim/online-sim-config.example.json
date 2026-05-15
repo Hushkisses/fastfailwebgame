@@ -1,8 +1,8 @@
 {
   "url": "ws://localhost:2567",
-  "adminPassword": "",
+  "adminPassword": "changeme",
   "joinStaggerMs": 40,
-  "roundDurationMs": 90000,
+  "roundDurationMs": 180000,
   "outputDir": "out",
   "tickMs": 80,
   "groups": [
@@ -20,8 +20,8 @@
       "label": "도전적",
       "count": 33,
       "strategy": "random",
-      "minThinkMs": 90,
-      "maxThinkMs": 380,
+      "minThinkMs": 400,
+      "maxThinkMs": 1600,
       "hintChance": 0.025
     },
     {

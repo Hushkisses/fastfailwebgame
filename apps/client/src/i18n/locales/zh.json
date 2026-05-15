@@ -42,6 +42,8 @@
   "admin.phaseWaiting": "等待开始",
   "admin.phasePlaying": "进行中",
   "admin.phaseEnded": "已结束",
+  "admin.waitingPlayerCount": "等待开始并已连接: {count} 人",
+  "admin.connectedPlayerCount": "当前房间内玩家: {count} 人",
   "admin.startRound": "开始回合",
   "admin.endRound": "结束回合",
   "admin.backToLobby": "返回大厅",

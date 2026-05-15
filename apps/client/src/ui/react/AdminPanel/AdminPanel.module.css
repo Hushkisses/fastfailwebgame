@@ -40,6 +40,13 @@
   color: #5a4a8a;
 }
 
+.connected {
+  margin: -8px 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2d3a50;
+}
+
 .row {
   display: flex;
   flex-wrap: wrap;

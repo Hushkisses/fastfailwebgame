@@ -89,7 +89,7 @@ export function loadOnlineSimConfig(path: string): OnlineSimConfig {
   j.url = typeof j.url === "string" ? j.url : "ws://localhost:2567";
   j.adminPassword = typeof j.adminPassword === "string" ? j.adminPassword : "";
   j.joinStaggerMs = Number.isFinite(j.joinStaggerMs) ? Math.max(0, j.joinStaggerMs) : 40;
-  j.roundDurationMs = Number.isFinite(j.roundDurationMs) ? Math.max(5000, j.roundDurationMs) : 90_000;
+  j.roundDurationMs = Number.isFinite(j.roundDurationMs) ? Math.max(5000, j.roundDurationMs) : 180_000;
   j.outputDir = typeof j.outputDir === "string" ? j.outputDir : "out";
   j.tickMs = Number.isFinite(j.tickMs) ? Math.max(40, j.tickMs) : 80;
   return j;

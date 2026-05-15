@@ -42,6 +42,8 @@
   "admin.phaseWaiting": "시작 대기",
   "admin.phasePlaying": "진행 중",
   "admin.phaseEnded": "종료됨",
+  "admin.waitingPlayerCount": "시작 대기 중 접속 플레이어: {count}명",
+  "admin.connectedPlayerCount": "현재 방에 접속한 플레이어: {count}명",
   "admin.startRound": "라운드 시작",
   "admin.endRound": "라운드 종료",
   "admin.backToLobby": "로비로",

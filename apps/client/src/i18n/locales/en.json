@@ -42,6 +42,8 @@
   "admin.phaseWaiting": "Waiting to start",
   "admin.phasePlaying": "Playing",
   "admin.phaseEnded": "Ended",
+  "admin.waitingPlayerCount": "Players waiting for start: {count}",
+  "admin.connectedPlayerCount": "Players in room: {count}",
   "admin.startRound": "Start round",
   "admin.endRound": "End round",
   "admin.backToLobby": "Back to lobby",
