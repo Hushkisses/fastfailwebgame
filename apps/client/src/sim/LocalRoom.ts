@@ -116,8 +116,7 @@ export class LocalRoom {
 
     this.emit("resolution", {
       id: this.sessionId,
-      ...result,
-      ...(result.success ? { successPath: path } : {})
+      ...result
     });
   }
 

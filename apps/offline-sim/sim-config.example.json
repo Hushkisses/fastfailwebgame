@@ -22,8 +22,8 @@
       "preferSingleStep": true
     },
     {
-      "id": "opportunistic",
-      "label": "기회주의",
+      "id": "bold",
+      "label": "과감",
       "count": 100,
       "thinkMs": { "type": "uniform", "min": 120, "max": 900 },
       "hintBaseChance": 0.06,

@@ -3,22 +3,12 @@ import { resolve } from "node:path";
 
 export type Side = "left" | "right";
 
-export type StrategySpec =
-  | {
-      strategy: "random";
-      minThinkMs: number;
-      maxThinkMs: number;
-      hintChance: number;
-    }
-  | {
-      strategy: "opportunistic";
-      minThinkMs: number;
-      maxThinkMs: number;
-      hintChance: number;
-      /** 같은 층에서 "앞줄"이 없을 때, 정보 없이 무작위로 선행할 확률 (0~1) */
-      firstMoveEpsilon: number;
-      preferSingleStep?: boolean;
-    };
+export type StrategySpec = {
+  strategy: "random";
+  minThinkMs: number;
+  maxThinkMs: number;
+  hintChance: number;
+};
 
 export type OnlineSimGroup = {
   id: string;
@@ -49,14 +39,8 @@ export function expandBotRows(cfg: OnlineSimConfig): { groupId: string; label: s
           strategy: g.strategy,
           minThinkMs: g.minThinkMs,
           maxThinkMs: g.maxThinkMs,
-          hintChance: g.hintChance,
-          ...(g.strategy === "opportunistic"
-            ? {
-                firstMoveEpsilon: g.firstMoveEpsilon,
-                preferSingleStep: g.preferSingleStep ?? true
-              }
-            : {})
-        } as StrategySpec
+          hintChance: g.hintChance
+        }
       });
     }
   }
@@ -71,19 +55,14 @@ export function loadOnlineSimConfig(path: string): OnlineSimConfig {
     const groupId = g.id;
     if (!groupId || !g.label) throw new Error("online-sim-config: id/label 필수");
     if (!Number.isFinite(g.count) || g.count < 1) throw new Error(`online-sim-config: count >= 1 (${groupId})`);
-    if (g.strategy !== "random" && g.strategy !== "opportunistic") {
-      throw new Error(`online-sim-config: strategy random|opportunistic (${groupId})`);
+    if (g.strategy !== "random") {
+      throw new Error(`online-sim-config: strategy는 random만 지원 (${groupId})`);
     }
     if (!Number.isFinite(g.minThinkMs) || !Number.isFinite(g.maxThinkMs) || g.minThinkMs > g.maxThinkMs) {
       throw new Error(`online-sim-config: thinkMs (${groupId})`);
     }
     if (!Number.isFinite(g.hintChance) || g.hintChance < 0 || g.hintChance > 1) {
       throw new Error(`online-sim-config: hintChance (${groupId})`);
-    }
-    if (g.strategy === "opportunistic") {
-      if (!Number.isFinite(g.firstMoveEpsilon) || g.firstMoveEpsilon < 0 || g.firstMoveEpsilon > 1) {
-        throw new Error(`online-sim-config: firstMoveEpsilon 0~1 (${groupId})`);
-      }
     }
   }
   j.url = typeof j.url === "string" ? j.url : "ws://localhost:2567";

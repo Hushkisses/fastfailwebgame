@@ -9,7 +9,7 @@
     {
       "id": "conservative",
       "label": "conservative",
-      "count": 33,
+      "count": 48,
       "strategy": "random",
       "minThinkMs": 800,
       "maxThinkMs": 2600,
@@ -18,22 +18,11 @@
     {
       "id": "bold",
       "label": "bold",
-      "count": 33,
+      "count": 48,
       "strategy": "random",
       "minThinkMs": 400,
       "maxThinkMs": 1600,
       "hintChance": 0.025
-    },
-    {
-      "id": "opportunist",
-      "label": "opportunist",
-      "count": 33,
-      "strategy": "opportunistic",
-      "minThinkMs": 180,
-      "maxThinkMs": 750,
-      "hintChance": 0.07,
-      "firstMoveEpsilon": 0.02,
-      "preferSingleStep": true
     }
   ]
 }

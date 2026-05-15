@@ -10,13 +10,7 @@ import {
   type OnlineSimConfig,
   type StrategySpec
 } from "./config.js";
-import {
-  type GameStateLike,
-  ObservationLedger,
-  pickOpportunisticSide,
-  pickRandomSide,
-  type ResolutionPayload
-} from "./ledger.js";
+import { type GameStateLike, pickRandomSide, type ResolutionPayload } from "./ledger.js";
 
 const ROOM_NAME = "failure-growth";
 const MAX_ROOM_CLIENTS = 100;
@@ -91,15 +85,9 @@ function csvEscape(s: string | number | boolean): string {
   return t;
 }
 
-function wireResolution(
-  room: Room,
-  ledger: ObservationLedger,
-  botBySession: Map<string, BotRunner>
-): void {
+function wireResolution(room: Room, botBySession: Map<string, BotRunner>): void {
   room.onMessage("resolution", (msg: unknown) => {
     const m = msg as ResolutionPayload;
-    ledger.noteResolution(m);
-    ledger.syncFromRoom(room);
     if (m.blockedDuplicate && m.id) {
       botBySession.get(m.id)?.onBlockedDuplicate();
     }
@@ -114,7 +102,6 @@ class BotRunner {
 
   constructor(
     readonly room: Room,
-    readonly slot: number,
     readonly displayName: string,
     readonly groupId: string,
     readonly spec: StrategySpec
@@ -126,7 +113,7 @@ class BotRunner {
     this.queuedSide = this.lastSentSide !== null ? oppositeSide(this.lastSentSide) : pickRandomSide(Math.random);
   }
 
-  tick(ledger: ObservationLedger, sessionOrder: string[], now: number): void {
+  tick(now: number): void {
     const st = this.room.state as unknown as GameStateLike;
     if (st.matchPhase !== "playing") return;
 
@@ -147,24 +134,10 @@ class BotRunner {
       }
     }
 
-    let side: Side | null = null;
+    let side: Side;
     if (this.queuedSide !== null) {
       side = this.queuedSide;
       this.queuedSide = null;
-    } else if (this.spec.strategy === "opportunistic") {
-      side = pickOpportunisticSide(
-        this.sessionId,
-        this.slot,
-        sessionOrder,
-        this.room,
-        ledger,
-        this.spec,
-        Math.random
-      );
-      if (side === null) {
-        this.nextThinkAt = now + 60;
-        return;
-      }
     } else {
       side = pickRandomSide(Math.random);
     }
@@ -193,10 +166,8 @@ async function main(): Promise<void> {
     rows.length = MAX_ROOM_CLIENTS;
   }
 
-  const ledger = new ObservationLedger();
   const botBySession = new Map<string, BotRunner>();
   const bots: BotRunner[] = [];
-  const sessionOrder: string[] = [];
 
   let roomId: string;
   let adminRoom: Room | null = null;
@@ -211,29 +182,24 @@ async function main(): Promise<void> {
     const c = new Client(cfg.url);
     const first = await c.joinOrCreate(ROOM_NAME, { name: rows[0]!.displayName });
     roomId = first.roomId;
-    const br = new BotRunner(first, 0, rows[0]!.displayName, rows[0]!.groupId, rows[0]!.spec);
+    const br = new BotRunner(first, rows[0]!.displayName, rows[0]!.groupId, rows[0]!.spec);
     bots.push(br);
     botBySession.set(br.sessionId, br);
-    sessionOrder.push(br.sessionId);
-    wireResolution(bots[0]!.room, ledger, botBySession);
+    wireResolution(bots[0]!.room, botBySession);
     console.log(`[online-sim] 첫 봇 생성 방 ${roomId} (adminPassword 없음 — 라운드는 관리자 UI에서 시작)`);
 
     for (let i = 1; i < rows.length; i++) {
       if (cfg.joinStaggerMs > 0) await sleep(cfg.joinStaggerMs);
       const cl = new Client(cfg.url);
       const room = await cl.joinById(roomId, { name: rows[i]!.displayName });
-      const b = new BotRunner(room, i, rows[i]!.displayName, rows[i]!.groupId, rows[i]!.spec);
+      const b = new BotRunner(room, rows[i]!.displayName, rows[i]!.groupId, rows[i]!.spec);
       bots.push(b);
       botBySession.set(b.sessionId, b);
-      sessionOrder.push(b.sessionId);
     }
 
     const tick = setInterval(() => {
       const now = Date.now();
-      for (const b of bots) {
-        if (bots[0]) ledger.syncFromRoom(bots[0].room);
-        b.tick(ledger, sessionOrder, now);
-      }
+      for (const b of bots) b.tick(now);
     }, cfg.tickMs);
 
     await sleep(cfg.roundDurationMs);
@@ -248,24 +214,20 @@ async function main(): Promise<void> {
     if (cfg.joinStaggerMs > 0 && i > 0) await sleep(cfg.joinStaggerMs);
     const cl = new Client(cfg.url);
     const room = await cl.joinById(roomId, { name: rows[i]!.displayName });
-    const b = new BotRunner(room, i, rows[i]!.displayName, rows[i]!.groupId, rows[i]!.spec);
+    const b = new BotRunner(room, rows[i]!.displayName, rows[i]!.groupId, rows[i]!.spec);
     bots.push(b);
     botBySession.set(b.sessionId, b);
-    sessionOrder.push(b.sessionId);
   }
   console.log(`[online-sim] 봇 ${bots.length}명 입장`);
 
-  wireResolution(bots[0]!.room, ledger, botBySession);
+  wireResolution(bots[0]!.room, botBySession);
 
   adminRoom!.send("adminStart");
   await sleep(400);
 
   const tick = setInterval(() => {
     const now = Date.now();
-    for (const b of bots) {
-      if (bots[0]) ledger.syncFromRoom(bots[0].room);
-      b.tick(ledger, sessionOrder, now);
-    }
+    for (const b of bots) b.tick(now);
   }, cfg.tickMs);
 
   await sleep(cfg.roundDurationMs);
