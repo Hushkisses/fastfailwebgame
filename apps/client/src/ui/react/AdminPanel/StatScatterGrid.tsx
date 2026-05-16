@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
+import { useState } from "react";
 import type { StatRowView } from "./statTypes";
-import { allNumericStatPairs, type NumericStatKey } from "./statScatter";
+import { allNumericStatPairs, primaryStatPairs, type NumericStatKey } from "./statScatter";
 import { StatScatterPlot } from "./StatScatterPlot";
 import styles from "./AdminPanel.module.css";
 
@@ -10,6 +11,8 @@ export interface StatScatterGridProps {
   pairTitle: (xKey: NumericStatKey, yKey: NumericStatKey) => string;
   sectionTitle: string;
   sectionHint: string;
+  showAllLabel: string;
+  showLessLabel: string;
   legendConservative: string;
   legendBold: string;
   legendOther: string;
@@ -21,16 +24,28 @@ export function StatScatterGrid({
   pairTitle,
   sectionTitle,
   sectionHint,
+  showAllLabel,
+  showLessLabel,
   legendConservative,
   legendBold,
   legendOther
 }: StatScatterGridProps): ReactElement {
-  const pairs = allNumericStatPairs();
+  const [showAll, setShowAll] = useState(false);
+  const pairs = showAll ? allNumericStatPairs() : primaryStatPairs();
 
   return (
     <section className={styles.scatterSection}>
-      <h3 className={styles.scatterSectionTitle}>{sectionTitle}</h3>
-      <p className={styles.sortHint}>{sectionHint}</p>
+      <div className={styles.scatterSectionHead}>
+        <h3 className={styles.scatterSectionTitle}>{sectionTitle}</h3>
+        <button
+          type="button"
+          className={styles.scatterToggle}
+          onClick={() => setShowAll((v) => !v)}
+        >
+          {showAll ? showLessLabel : showAllLabel}
+        </button>
+      </div>
+      <p className={styles.sortHint}>{showAll ? sectionHint : ""}</p>
       <ul className={styles.scatterLegend}>
         <li>
           <span className={styles.dotConservative} aria-hidden />

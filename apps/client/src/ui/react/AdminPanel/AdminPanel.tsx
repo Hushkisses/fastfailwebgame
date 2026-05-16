@@ -295,6 +295,8 @@ export function AdminPanel(): ReactElement | null {
             pairTitle={pairTitle}
             sectionTitle={t("admin.scatterSectionTitle")}
             sectionHint={t("admin.scatterSortHint")}
+            showAllLabel={t("admin.scatterShowAll")}
+            showLessLabel={t("admin.scatterShowLess")}
             legendConservative={t("admin.scatterLegendConservative")}
             legendBold={t("admin.scatterLegendBold")}
             legendOther={t("admin.scatterLegendOther")}

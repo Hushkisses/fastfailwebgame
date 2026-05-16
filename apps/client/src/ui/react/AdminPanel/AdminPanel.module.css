@@ -183,11 +183,36 @@
   border-top: 1px solid #e0e6f0;
 }
 
+.scatterSectionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
 .scatterSectionTitle {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 15px;
   font-weight: 800;
   color: #0d1422;
+}
+
+.scatterToggle {
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  color: #4a3a8a;
+  background: #f0ecfa;
+  border: 1px solid #c8b8e8;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.scatterToggle:hover {
+  background: #e8e0f8;
 }
 
 .scatterLegend {

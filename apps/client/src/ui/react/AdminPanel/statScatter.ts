@@ -11,16 +11,23 @@ export const NUMERIC_STAT_KEYS: NumericStatKey[] = [
   "failEnergy"
 ];
 
-const PRIORITY_PAIRS: [NumericStatKey, NumericStatKey][] = [
+export const PRIMARY_STAT_PAIRS: [NumericStatKey, NumericStatKey][] = [
   ["failCount", "currentFloor"],
   ["failCount", "bestFloorReached"]
 ];
+
+const PRIORITY_PAIRS = PRIMARY_STAT_PAIRS;
 
 function pairKey(a: NumericStatKey, b: NumericStatKey): string {
   return a < b ? `${a}|${b}` : `${b}|${a}`;
 }
 
-/** 우선 표시할 쌍 뒤에, 나머지 변수 조합을 2개씩(그리드용) 나열 */
+/** 기본 산점도 2개 (실패횟수 × 현재층 / 최고층) */
+export function primaryStatPairs(): [NumericStatKey, NumericStatKey][] {
+  return [...PRIMARY_STAT_PAIRS];
+}
+
+/** 우선 쌍 + 나머지 숫자 변수 조합 전체 */
 export function allNumericStatPairs(): [NumericStatKey, NumericStatKey][] {
   const seen = new Set<string>();
   const out: [NumericStatKey, NumericStatKey][] = [];
