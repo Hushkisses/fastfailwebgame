@@ -3,18 +3,13 @@ import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { t as rawT, type Locale } from "../../../i18n";
 import { useHudStore } from "../../../state/hudStore";
+import { StatScatterGrid } from "./StatScatterGrid";
+import type { NumericStatKey } from "./statScatter";
+import type { StatRowView } from "./statTypes";
 import styles from "./AdminPanel.module.css";
 
 export type StatSortKey = "rank" | "name" | "failCount" | "bestFloor" | "currentFloor";
 export type StatSortDir = "asc" | "desc";
-
-export interface StatRowView {
-  name: string;
-  rank: number;
-  failCount: number;
-  bestFloorReached: number;
-  currentFloor: number;
-}
 
 function readStatsFromState(state: unknown): StatRowView[] {
   const s = state as Record<string, unknown> | null;
@@ -32,12 +27,15 @@ function readStatsFromState(state: unknown): StatRowView[] {
     const currentFloorRaw =
       typeof raw.currentFloor === "number" ? raw.currentFloor : Number(raw.currentFloor ?? NaN);
     const currentFloor = Number.isFinite(currentFloorRaw) ? currentFloorRaw : bestFloorReached;
+    const failEnergy =
+      typeof raw.failEnergy === "number" ? raw.failEnergy : Number(raw.failEnergy ?? 0);
     rows.push({
       name: String(raw.name ?? ""),
       rank: rankRaw > 0 ? rankRaw : i + 1,
       failCount,
       bestFloorReached,
-      currentFloor
+      currentFloor,
+      failEnergy
     });
   }
   return rows;
@@ -150,6 +148,29 @@ export function AdminPanel(): ReactElement | null {
     if (sortKey !== key) return "";
     return sortDir === "asc" ? " ▲" : " ▼";
   };
+
+  const axisLabel = (key: NumericStatKey): string => {
+    switch (key) {
+      case "rank":
+        return t("admin.colRank");
+      case "failCount":
+        return t("admin.colFailCount");
+      case "bestFloorReached":
+        return t("admin.colBest");
+      case "currentFloor":
+        return t("admin.colCurrentFloor");
+      case "failEnergy":
+        return t("admin.colEnergy");
+    }
+  };
+
+  const pairTitle = (xKey: NumericStatKey, yKey: NumericStatKey): string =>
+    t("admin.scatterPairTitle", { x: axisLabel(xKey), y: axisLabel(yKey) });
+
+  const rawStats = useMemo(() => {
+    if (!room) return [];
+    return readStatsFromState(room.state);
+  }, [room, phase, bump]);
 
   if (!room) {
     return null;
@@ -265,6 +286,19 @@ export function AdminPanel(): ReactElement | null {
               ? t("admin.statsNoPlayers")
               : t("admin.statsEmpty")}
           </p>
+        )}
+
+        {phase === "ended" && rawStats.length > 0 && (
+          <StatScatterGrid
+            rows={rawStats}
+            axisLabel={axisLabel}
+            pairTitle={pairTitle}
+            sectionTitle={t("admin.scatterSectionTitle")}
+            sectionHint={t("admin.scatterSortHint")}
+            legendConservative={t("admin.scatterLegendConservative")}
+            legendBold={t("admin.scatterLegendBold")}
+            legendOther={t("admin.scatterLegendOther")}
+          />
         )}
 
         <p className={styles.tip}>{t("admin.tip")}</p>

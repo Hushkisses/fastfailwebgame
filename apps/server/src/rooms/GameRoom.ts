@@ -3,6 +3,7 @@ import { gameBalance } from "../config/gameBalance.js";
 import { loadAdminConfig } from "../adminConfig.js";
 import { LevelBranchGenerator, type Side } from "../core/grid.js";
 import { refreshPlayerStats, resolveChoice } from "../core/resolver.js";
+import { RoomBotOrchestrator } from "../bots/RoomBotOrchestrator.js";
 import {
   GameState,
   HintResult,
@@ -41,6 +42,7 @@ export class GameRoom extends Room<GameState> {
   maxClients = 100;
   private readonly branches = new LevelBranchGenerator();
   private readonly adminClientIds = new Set<string>();
+  private readonly botOrchestrator = new RoomBotOrchestrator();
 
   onCreate(): void {
     this.setState(new GameState());
@@ -112,18 +114,41 @@ export class GameRoom extends Room<GameState> {
 
     this.onMessage("adminStart", (client) => {
       if (!this.adminClientIds.has(client.sessionId)) return;
-      this.startMatchRound();
+      void this.runAdminStart();
     });
 
     this.onMessage("adminEnd", (client) => {
       if (!this.adminClientIds.has(client.sessionId)) return;
-      this.endMatchRound();
+      void this.runAdminEnd();
     });
 
     this.onMessage("adminPing", (client) => {
       if (!this.adminClientIds.has(client.sessionId)) return;
       client.send("adminPong", {});
     });
+  }
+
+  private async runAdminStart(): Promise<void> {
+    try {
+      await this.botOrchestrator.release();
+      await this.botOrchestrator.fill({
+        roomId: this.roomId,
+        maxClients: this.maxClients,
+        connectedCount: this.clients.length
+      });
+    } catch (e) {
+      console.warn("[GameRoom] bot fill failed; starting round anyway", e);
+    }
+    this.startMatchRound();
+  }
+
+  private async runAdminEnd(): Promise<void> {
+    this.endMatchRound();
+    await this.botOrchestrator.release();
+  }
+
+  onDispose(): void {
+    void this.botOrchestrator.release();
   }
 
   private startMatchRound(): void {

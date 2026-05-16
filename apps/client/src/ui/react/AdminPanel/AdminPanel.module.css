@@ -17,7 +17,7 @@
 }
 
 .card {
-  width: min(1080px, calc(100vw - 32px));
+  width: min(1280px, calc(100vw - 32px));
   padding: 26px 28px;
   background: #ffffff;
   border: 1px solid rgba(100, 70, 180, 0.35);
@@ -175,4 +175,101 @@
   font-size: 11px;
   color: #7080a0;
   line-height: 1.45;
+}
+
+.scatterSection {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #e0e6f0;
+}
+
+.scatterSectionTitle {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #0d1422;
+}
+
+.scatterLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: #5a6680;
+}
+
+.scatterLegend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dotConservative,
+.dotBold,
+.dotOther {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+}
+
+.dotConservative {
+  background: #4a7fc8;
+}
+
+.dotBold {
+  background: #c85a4a;
+}
+
+.dotOther {
+  background: #6a48c8;
+}
+
+.scatterGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .scatterGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.scatterCard {
+  margin: 0;
+  padding: 12px 12px 8px;
+  border: 1px solid #d8e0ee;
+  border-radius: 10px;
+  background: #fafbfd;
+}
+
+.scatterTitle {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2a3344;
+  text-align: center;
+}
+
+.scatterSvg {
+  display: block;
+  max-width: 100%;
+}
+
+.scatterTick {
+  font-size: 9px;
+  fill: #7080a0;
+  font-family: system-ui, sans-serif;
+}
+
+.scatterAxisLabel {
+  font-size: 10px;
+  fill: #445064;
+  font-weight: 600;
+  font-family: system-ui, sans-serif;
 }

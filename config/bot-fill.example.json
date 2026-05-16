@@ -1,0 +1,23 @@
+{
+  "enabled": true,
+  "tickMs": 80,
+  "joinStaggerMs": 40,
+  "groups": [
+    {
+      "id": "conservative",
+      "label": "conservative",
+      "strategy": "random",
+      "minThinkMs": 800,
+      "maxThinkMs": 2600,
+      "hintChance": 0.15
+    },
+    {
+      "id": "bold",
+      "label": "bold",
+      "strategy": "random",
+      "minThinkMs": 400,
+      "maxThinkMs": 1600,
+      "hintChance": 0.025
+    }
+  ]
+}
