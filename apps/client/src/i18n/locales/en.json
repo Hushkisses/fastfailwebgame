@@ -53,6 +53,8 @@
   "admin.backToLobby": "Back to lobby",
   "admin.statsTitle": "Last ended round stats",
   "admin.statsSortHint": "Click a column header to sort ascending or descending.",
+  "admin.statsTableShow": "Show ranking table ({count})",
+  "admin.statsTableHide": "Hide ranking table",
   "admin.statsAudienceLabel": "Show",
   "admin.statsAudiencePlayers": "Players only",
   "admin.statsAudienceBots": "Bots only",

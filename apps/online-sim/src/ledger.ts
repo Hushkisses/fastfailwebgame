@@ -13,12 +13,14 @@ export interface ResolutionPayload {
 
 export interface PlayerLike {
   floor: number;
+  jumpPower: number;
   currentSide: string;
   hasWon: boolean;
   failCount: number;
   bestFloorReached: number;
   failEnergy: number;
   respawnAvailableAt: number;
+  revealedTrapKeys: { length: number; [index: number]: string | undefined };
 }
 
 export interface GameStateLike {

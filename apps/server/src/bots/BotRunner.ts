@@ -1,5 +1,7 @@
 import type { Room } from "colyseus.js";
+import { LevelBranchGenerator } from "../core/grid.js";
 import type { Side, StrategySpec } from "./botConfig.js";
+import { pickFarthestPath, trapKnownFromList } from "./botPick.js";
 
 export interface ResolutionPayload {
   id: string;
@@ -7,8 +9,11 @@ export interface ResolutionPayload {
 }
 
 export interface PlayerLike {
+  floor: number;
+  jumpPower: number;
   hasWon: boolean;
   respawnAvailableAt: number;
+  revealedTrapKeys: { length: number; [index: number]: string | undefined };
 }
 
 export interface GameStateLike {
@@ -16,19 +21,12 @@ export interface GameStateLike {
   players: { get(id: string): PlayerLike | undefined };
 }
 
-function oppositeSide(s: Side): Side {
-  return s === "left" ? "right" : "left";
-}
-
-function pickRandomSide(): Side {
-  return Math.random() < 0.5 ? "left" : "right";
-}
-
 export class BotRunner {
   readonly sessionId: string;
   nextThinkAt = 0;
-  queuedSide: Side | null = null;
-  lastSentSide: Side | null = null;
+  queuedPath: Side[] | null = null;
+  lastSentPath: Side[] | null = null;
+  private readonly branches = new LevelBranchGenerator();
 
   constructor(
     readonly room: Room,
@@ -40,7 +38,21 @@ export class BotRunner {
   }
 
   onBlockedDuplicate(): void {
-    this.queuedSide = this.lastSentSide !== null ? oppositeSide(this.lastSentSide) : pickRandomSide();
+    const st = this.room.state as unknown as GameStateLike;
+    const me = st.players.get(this.sessionId);
+    if (!me) {
+      this.queuedPath = null;
+      return;
+    }
+    const trapKnown = trapKnownFromList(me.revealedTrapKeys);
+    this.queuedPath = pickFarthestPath(
+      this.branches,
+      me.floor,
+      me.jumpPower,
+      trapKnown,
+      Math.random,
+      this.lastSentPath ?? undefined
+    );
   }
 
   tick(now: number): void {
@@ -64,21 +76,26 @@ export class BotRunner {
       }
     }
 
-    let side: Side;
-    if (this.queuedSide !== null) {
-      side = this.queuedSide;
-      this.queuedSide = null;
+    const trapKnown = trapKnownFromList(me.revealedTrapKeys);
+    let path: Side[];
+    if (this.queuedPath !== null) {
+      path = this.queuedPath;
+      this.queuedPath = null;
     } else {
-      side = pickRandomSide();
+      path = pickFarthestPath(this.branches, me.floor, me.jumpPower, trapKnown);
     }
 
     try {
-      this.room.send("chooseTile", { side });
+      if (path.length === 1) {
+        this.room.send("chooseTile", { side: path[0] });
+      } else {
+        this.room.send("chooseTile", { sides: path });
+      }
     } catch {
       return;
     }
 
-    this.lastSentSide = side;
+    this.lastSentPath = path;
     const gap =
       this.spec.minThinkMs + Math.random() * (this.spec.maxThinkMs - this.spec.minThinkMs);
     this.nextThinkAt = now + Math.max(80, gap);

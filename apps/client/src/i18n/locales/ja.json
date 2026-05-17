@@ -53,6 +53,8 @@
   "admin.backToLobby": "ロビーへ",
   "admin.statsTitle": "直前に終了したラウンドの統計",
   "admin.statsSortHint": "列見出しをクリックすると昇順・降順が切り替わります。",
+  "admin.statsTableShow": "順位表を開く（{count}名）",
+  "admin.statsTableHide": "順位表を閉じる",
   "admin.statsAudienceLabel": "表示対象",
   "admin.statsAudiencePlayers": "プレイヤーのみ",
   "admin.statsAudienceBots": "ボットのみ",

@@ -150,11 +150,23 @@
   color: #5a6680;
 }
 
+.tableToolbar {
+  margin: 0 0 12px;
+}
+
+.tableToggleBtn {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 10px 16px;
+  font-size: 13px;
+}
+
 .tableWrap {
   overflow: auto;
   max-height: min(480px, 62vh);
   border: 1px solid #d8e0ee;
   border-radius: 10px;
+  margin-bottom: 16px;
 }
 
 .table {

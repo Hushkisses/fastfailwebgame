@@ -53,6 +53,8 @@
   "admin.backToLobby": "返回大厅",
   "admin.statsTitle": "上一结束回合统计",
   "admin.statsSortHint": "点击列标题可切换升序或降序。",
+  "admin.statsTableShow": "展开排名表（{count}人）",
+  "admin.statsTableHide": "收起排名表",
   "admin.statsAudienceLabel": "显示对象",
   "admin.statsAudiencePlayers": "仅玩家",
   "admin.statsAudienceBots": "仅机器人",

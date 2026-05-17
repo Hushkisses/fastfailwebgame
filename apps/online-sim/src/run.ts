@@ -10,16 +10,14 @@ import {
   type OnlineSimConfig,
   type StrategySpec
 } from "./config.js";
-import { type GameStateLike, pickRandomSide, type ResolutionPayload } from "./ledger.js";
+import { LevelBranchGenerator } from "../../server/src/core/grid.js";
+import { pickFarthestPath, trapKnownFromList } from "../../server/src/bots/botPick.js";
+import { type GameStateLike, type ResolutionPayload } from "./ledger.js";
 
 const ROOM_NAME = "failure-growth";
 const MAX_ROOM_CLIENTS = 100;
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
-function oppositeSide(s: Side): Side {
-  return s === "left" ? "right" : "left";
-}
 
 function parseArgs(): { configPath: string } {
   const args = process.argv.slice(2);
@@ -97,8 +95,9 @@ function wireResolution(room: Room, botBySession: Map<string, BotRunner>): void 
 class BotRunner {
   readonly sessionId: string;
   nextThinkAt = 0;
-  queuedSide: Side | null = null;
-  lastSentSide: Side | null = null;
+  queuedPath: Side[] | null = null;
+  lastSentPath: Side[] | null = null;
+  private readonly branches = new LevelBranchGenerator();
 
   constructor(
     readonly room: Room,
@@ -110,7 +109,21 @@ class BotRunner {
   }
 
   onBlockedDuplicate(): void {
-    this.queuedSide = this.lastSentSide !== null ? oppositeSide(this.lastSentSide) : pickRandomSide(Math.random);
+    const st = this.room.state as unknown as GameStateLike;
+    const me = st.players.get(this.sessionId);
+    if (!me) {
+      this.queuedPath = null;
+      return;
+    }
+    const trapKnown = trapKnownFromList(me.revealedTrapKeys);
+    this.queuedPath = pickFarthestPath(
+      this.branches,
+      me.floor,
+      me.jumpPower,
+      trapKnown,
+      Math.random,
+      this.lastSentPath ?? undefined
+    );
   }
 
   tick(now: number): void {
@@ -134,21 +147,26 @@ class BotRunner {
       }
     }
 
-    let side: Side;
-    if (this.queuedSide !== null) {
-      side = this.queuedSide;
-      this.queuedSide = null;
+    const trapKnown = trapKnownFromList(me.revealedTrapKeys);
+    let path: Side[];
+    if (this.queuedPath !== null) {
+      path = this.queuedPath;
+      this.queuedPath = null;
     } else {
-      side = pickRandomSide(Math.random);
+      path = pickFarthestPath(this.branches, me.floor, me.jumpPower, trapKnown);
     }
 
     try {
-      this.room.send("chooseTile", { side });
+      if (path.length === 1) {
+        this.room.send("chooseTile", { side: path[0] });
+      } else {
+        this.room.send("chooseTile", { sides: path });
+      }
     } catch {
       return;
     }
 
-    this.lastSentSide = side;
+    this.lastSentPath = path;
 
     const gap =
       this.spec.minThinkMs + Math.random() * (this.spec.maxThinkMs - this.spec.minThinkMs);

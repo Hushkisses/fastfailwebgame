@@ -141,6 +141,7 @@ export function AdminPanel(): ReactElement | null {
   const [sortKey, setSortKey] = useState<StatSortKey>("rank");
   const [sortDir, setSortDir] = useState<StatSortDir>("asc");
   const [audienceFilter, setAudienceFilter] = useState<StatAudienceFilter>("players");
+  const [rankTableOpen, setRankTableOpen] = useState(false);
 
   const [bump, setBump] = useState(0);
   const forceUpdate = useCallback((): void => {
@@ -275,7 +276,6 @@ export function AdminPanel(): ReactElement | null {
         </div>
 
         <h2 className={styles.statsTitle}>{t("admin.statsTitle")}</h2>
-        <p className={styles.sortHint}>{t("admin.statsSortHint")}</p>
         {phase === "ended" && rawStats.length > 0 ? (
           <fieldset className={styles.audienceFilter}>
             <legend className={styles.audienceLegend}>{t("admin.statsAudienceLabel")}</legend>
@@ -309,7 +309,23 @@ export function AdminPanel(): ReactElement | null {
           </fieldset>
         ) : null}
         {phase === "ended" && sortedStats.length > 0 ? (
-          <div className={styles.tableWrap}>
+          <div className={styles.tableToolbar}>
+            <button
+              type="button"
+              className={`${styles.btn} ${styles.btnGhost} ${styles.tableToggleBtn}`}
+              onClick={() => setRankTableOpen((open) => !open)}
+              aria-expanded={rankTableOpen}
+            >
+              {rankTableOpen
+                ? t("admin.statsTableHide")
+                : t("admin.statsTableShow", { count: sortedStats.length })}
+            </button>
+          </div>
+        ) : null}
+        {phase === "ended" && sortedStats.length > 0 && rankTableOpen ? (
+          <>
+            <p className={styles.sortHint}>{t("admin.statsSortHint")}</p>
+            <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -389,8 +405,9 @@ export function AdminPanel(): ReactElement | null {
                 ))}
               </tbody>
             </table>
-          </div>
-        ) : (
+            </div>
+          </>
+        ) : phase !== "ended" || rawStats.length === 0 || filteredStats.length === 0 ? (
           <p className={styles.empty}>
             {phase === "ended" && rawStats.length === 0
               ? t("admin.statsNoPlayers")
@@ -402,7 +419,7 @@ export function AdminPanel(): ReactElement | null {
                     : t("admin.statsEmpty")
                 : t("admin.statsEmpty")}
           </p>
-        )}
+        ) : null}
 
         {phase === "ended" && filteredStats.length > 0 && (
           <StatScatterGrid

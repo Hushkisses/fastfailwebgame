@@ -53,6 +53,8 @@
   "admin.backToLobby": "로비로",
   "admin.statsTitle": "직전 종료 라운드 통계",
   "admin.statsSortHint": "각 열 제목을 누르면 오름차순·내림차순으로 정렬됩니다.",
+  "admin.statsTableShow": "순위표 펼치기 ({count}명)",
+  "admin.statsTableHide": "순위표 접기",
   "admin.statsAudienceLabel": "표시 대상",
   "admin.statsAudiencePlayers": "플레이어만",
   "admin.statsAudienceBots": "봇만",
