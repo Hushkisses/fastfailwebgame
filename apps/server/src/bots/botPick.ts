@@ -1,6 +1,7 @@
 import { gameBalance } from "../config/gameBalance.js";
 import { trapRevealKey } from "../core/resolver.js";
 import { LevelBranchGenerator, type Side } from "../core/grid.js";
+import type { BotStrategy } from "./botConfig.js";
 
 export type { Side };
 
@@ -15,7 +16,8 @@ function inferPathForSlot(
   startFloor: number,
   offset: number,
   side: Side,
-  trapKnown: Set<string>
+  trapKnown: Set<string>,
+  useBranchOracle: boolean
 ): Side[] | null {
   const hops = offset + 1;
 
@@ -30,7 +32,7 @@ function inferPathForSlot(
     for (const s of choices) {
       const key = trapRevealKey(fAt, s);
       if (trapKnown.has(key)) continue;
-      if (!finalHop && !gen.isChoiceSafe(fAt, s)) continue;
+      if (useBranchOracle && !finalHop && !gen.isChoiceSafe(fAt, s)) continue;
       const found = dfs([...prefix, s]);
       if (found) return found;
     }
@@ -44,7 +46,8 @@ export function buildPickTargets(
   gen: LevelBranchGenerator,
   startFloor: number,
   jumpPower: number,
-  trapKnown: Set<string>
+  trapKnown: Set<string>,
+  useBranchOracle = true
 ): PickTarget[] {
   const jp = Math.max(1, Math.floor(jumpPower));
   const out: PickTarget[] = [];
@@ -54,7 +57,7 @@ export function buildPickTargets(
     for (const side of ["left", "right"] as const) {
       const startKey = trapRevealKey(col, side);
       if (trapKnown.has(startKey)) continue;
-      const path = inferPathForSlot(gen, startFloor, offset, side, trapKnown);
+      const path = inferPathForSlot(gen, startFloor, offset, side, trapKnown, useBranchOracle);
       if (path) out.push({ floor: col, side, path });
     }
   }
@@ -65,7 +68,74 @@ function pathKey(path: Side[]): string {
   return path.join(",");
 }
 
-/** 선택 가능한 타일 중 전진 칸 수가 가장 큰 경로 하나 (동률이면 무작위). */
+function pathIsFullySafe(
+  gen: LevelBranchGenerator,
+  startFloor: number,
+  path: Side[],
+  trapKnown: Set<string>
+): boolean {
+  for (let i = 0; i < path.length; i++) {
+    const f = startFloor + i;
+    const s = path[i]!;
+    if (trapKnown.has(trapRevealKey(f, s))) return false;
+    if (!gen.isChoiceSafe(f, s)) return false;
+  }
+  return true;
+}
+
+function farthestCandidates(
+  targets: PickTarget[],
+  excludePath?: Side[]
+): PickTarget[] {
+  if (targets.length === 0) return [];
+  const maxLen = Math.max(...targets.map((t) => t.path.length));
+  let candidates = targets.filter((t) => t.path.length === maxLen);
+  if (excludePath && excludePath.length > 0) {
+    const exc = pathKey(excludePath);
+    const without = candidates.filter((t) => pathKey(t.path) !== exc);
+    if (without.length > 0) candidates = without;
+  }
+  return candidates;
+}
+
+/**
+ * 공통: 알려진 함정만 피하고 선택 가능한 칸 중 가장 먼 경로 후보를 고른 뒤,
+ * - bold: 그중 무작위 (오라클 없음)
+ * - conservative: 70%(기본) 확률로 전 구간 안전한 먼 경로, 아니면 먼 경로 중 무작위
+ */
+export function pickBotPath(
+  strategy: BotStrategy,
+  gen: LevelBranchGenerator,
+  startFloor: number,
+  jumpPower: number,
+  trapKnown: Set<string>,
+  rnd: () => number = Math.random,
+  excludePath?: Side[],
+  correctChance = 0.7
+): Side[] {
+  const useOracle = strategy === "conservative";
+  const targets = buildPickTargets(gen, startFloor, jumpPower, trapKnown, useOracle);
+  if (targets.length === 0) {
+    return [rnd() < 0.5 ? "left" : "right"];
+  }
+
+  let candidates = farthestCandidates(targets, excludePath);
+  if (candidates.length === 0) {
+    candidates = farthestCandidates(targets);
+  }
+
+  if (strategy === "conservative") {
+    const safe = candidates.filter((t) => pathIsFullySafe(gen, startFloor, t.path, trapKnown));
+    if (safe.length > 0 && rnd() < correctChance) {
+      candidates = safe;
+    }
+  }
+
+  const pick = candidates[Math.floor(rnd() * candidates.length)]!;
+  return [...pick.path];
+}
+
+/** @deprecated 테스트·호환 — conservative 오라클 최장 경로 */
 export function pickFarthestPath(
   gen: LevelBranchGenerator,
   startFloor: number,
@@ -74,22 +144,7 @@ export function pickFarthestPath(
   rnd: () => number = Math.random,
   excludePath?: Side[]
 ): Side[] {
-  const targets = buildPickTargets(gen, startFloor, jumpPower, trapKnown);
-  if (targets.length === 0) {
-    return [rnd() < 0.5 ? "left" : "right"];
-  }
-
-  const maxLen = Math.max(...targets.map((t) => t.path.length));
-  let candidates = targets.filter((t) => t.path.length === maxLen);
-
-  if (excludePath && excludePath.length > 0) {
-    const exc = pathKey(excludePath);
-    const without = candidates.filter((t) => pathKey(t.path) !== exc);
-    if (without.length > 0) candidates = without;
-  }
-
-  const pick = candidates[Math.floor(rnd() * candidates.length)]!;
-  return [...pick.path];
+  return pickBotPath("conservative", gen, startFloor, jumpPower, trapKnown, rnd, excludePath, 1);
 }
 
 export function trapKnownFromList(keys: { length: number; [index: number]: string | undefined }): Set<string> {

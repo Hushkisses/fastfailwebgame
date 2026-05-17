@@ -35,6 +35,7 @@
   "hud.recentTileLeft": "Left",
   "hud.recentTileRight": "Right",
   "hud.recentTileEmpty": "Empty",
+  "hud.safeSideRatioHint": "Safe tiles are 60% left and 40% right.",
   "admin.passwordTitle": "Admin sign-in",
   "admin.passwordSubtitle": "Enter the password from your server config file.",
   "admin.passwordLabel": "Password",

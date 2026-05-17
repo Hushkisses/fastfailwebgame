@@ -101,7 +101,7 @@ export class GameRoom extends Room<GameState> {
         }
       }
 
-      this.broadcast("resolution", payload);
+      client.send("resolution", payload);
     });
 
     this.onMessage("requestHint", (client) => {
@@ -122,7 +122,6 @@ export class GameRoom extends Room<GameState> {
       hint.floor = player.floor;
       hint.safeSide = branch.leftSafe ? "left" : "right";
       hint.expiresAt = now + gameBalance.hintRevealMs;
-      this.state.hints.set(client.sessionId, hint);
       client.send("hintGranted", {
         floor: hint.floor,
         safeSide: hint.safeSide,
@@ -175,7 +174,9 @@ export class GameRoom extends Room<GameState> {
     while (this.state.lastRoundStats.length > 0) {
       this.state.lastRoundStats.shift();
     }
-    this.branches.clearBranches();
+    this.state.roundSeed = (Math.random() * 0x7fffffff) | 0;
+    this.branches.setRoundSeed(this.state.roundSeed);
+    this.branches.precomputeAll();
     while (this.state.trails.length > 0) {
       this.state.trails.shift();
     }

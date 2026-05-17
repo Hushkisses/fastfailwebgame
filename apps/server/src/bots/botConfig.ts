@@ -4,11 +4,15 @@ import { fileURLToPath } from "node:url";
 
 export type Side = "left" | "right";
 
+export type BotStrategy = "bold" | "conservative";
+
 export type StrategySpec = {
-  strategy: "random";
+  strategy: BotStrategy;
   minThinkMs: number;
   maxThinkMs: number;
   hintChance: number;
+  /** conservative: 전 구간 안전한 최장 경로를 고를 확률 */
+  correctChance: number;
 };
 
 export type BotGroupSpec = {
@@ -25,6 +29,15 @@ export interface BotFillConfig {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const DEFAULT_CORRECT_CHANCE = 0.7;
+
+function normalizeStrategy(raw: unknown, groupId: string): BotStrategy {
+  if (raw === "conservative") return "conservative";
+  if (raw === "bold") return "bold";
+  if (raw === "random") return groupId === "conservative" ? "conservative" : "bold";
+  return groupId === "conservative" ? "conservative" : "bold";
+}
+
 const defaultConfig: BotFillConfig = {
   enabled: true,
   tickMs: 80,
@@ -33,18 +46,20 @@ const defaultConfig: BotFillConfig = {
     {
       id: "conservative",
       label: "conservative",
-      strategy: "random",
+      strategy: "conservative",
       minThinkMs: 800,
       maxThinkMs: 2600,
-      hintChance: 0.15
+      hintChance: 0.15,
+      correctChance: DEFAULT_CORRECT_CHANCE
     },
     {
       id: "bold",
       label: "bold",
-      strategy: "random",
-      minThinkMs: 400,
-      maxThinkMs: 1600,
-      hintChance: 0.025
+      strategy: "bold",
+      minThinkMs: 80,
+      maxThinkMs: 200,
+      hintChance: 0.025,
+      correctChance: DEFAULT_CORRECT_CHANCE
     }
   ]
 };
@@ -63,7 +78,6 @@ function tryRead(p: string): BotFillConfig | null {
       const id = gr.id;
       const label = gr.label;
       if (typeof id !== "string" || typeof label !== "string") return null;
-      if (gr.strategy !== "random") return null;
       const minThinkMs = Number(gr.minThinkMs);
       const maxThinkMs = Number(gr.maxThinkMs);
       const hintChance = Number(gr.hintChance);
@@ -71,13 +85,18 @@ function tryRead(p: string): BotFillConfig | null {
         return null;
       }
       if (!Number.isFinite(hintChance) || hintChance < 0 || hintChance > 1) return null;
+      const correctRaw = Number(gr.correctChance);
+      const correctChance = Number.isFinite(correctRaw)
+        ? Math.min(1, Math.max(0, correctRaw))
+        : DEFAULT_CORRECT_CHANCE;
       groups.push({
         id,
         label,
-        strategy: "random",
+        strategy: normalizeStrategy(gr.strategy, id),
         minThinkMs,
         maxThinkMs,
-        hintChance
+        hintChance,
+        correctChance
       });
     }
     return {
@@ -137,7 +156,8 @@ export function buildBotRowsForCount(total: number, groups: BotGroupSpec[]): Bot
           strategy: g.strategy,
           minThinkMs: g.minThinkMs,
           maxThinkMs: g.maxThinkMs,
-          hintChance: g.hintChance
+          hintChance: g.hintChance,
+          correctChance: g.correctChance
         }
       });
     }

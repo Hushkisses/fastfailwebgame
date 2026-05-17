@@ -53,6 +53,8 @@ export class LocalRoomState {
   players = new SoloPlayerMap();
   trails: SoloTrail[] = [];
   hints = new SoloHintMap();
+  matchPhase = "playing";
+  roundSeed = 0;
 }
 
 export class LocalRoom {
@@ -67,6 +69,9 @@ export class LocalRoom {
     this.self = createSoloPlayer(this.sessionId, name);
     refreshPlayerStats(this.self);
     this.state.players.set(this.sessionId, this.self);
+    this.state.roundSeed = (Math.random() * 0x7fffffff) | 0;
+    this.branches.setRoundSeed(this.state.roundSeed);
+    this.branches.precomputeAll();
   }
 
   onMessage(type: "*", cb: (type: string, msg: unknown) => void): void;

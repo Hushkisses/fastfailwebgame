@@ -1,7 +1,7 @@
 import type { Room } from "colyseus.js";
 import { LevelBranchGenerator } from "../core/grid.js";
 import type { Side, StrategySpec } from "./botConfig.js";
-import { pickFarthestPath, trapKnownFromList } from "./botPick.js";
+import { pickBotPath, trapKnownFromList } from "./botPick.js";
 
 export interface ResolutionPayload {
   id: string;
@@ -18,6 +18,7 @@ export interface PlayerLike {
 
 export interface GameStateLike {
   matchPhase: string;
+  roundSeed?: number;
   players: { get(id: string): PlayerLike | undefined };
 }
 
@@ -27,6 +28,7 @@ export class BotRunner {
   queuedPath: Side[] | null = null;
   lastSentPath: Side[] | null = null;
   private readonly branches = new LevelBranchGenerator();
+  private syncedRoundSeed = -1;
 
   constructor(
     readonly room: Room,
@@ -35,29 +37,48 @@ export class BotRunner {
     readonly spec: StrategySpec
   ) {
     this.sessionId = room.sessionId;
+    this.nextThinkAt = Date.now() + Math.random() * spec.maxThinkMs;
+    room.onMessage("resolution", (msg: unknown) => {
+      const m = msg as ResolutionPayload;
+      if (m.blockedDuplicate && m.id === this.sessionId) {
+        this.onBlockedDuplicate();
+      }
+    });
+  }
+
+  private syncBranches(st: GameStateLike): void {
+    const seed = typeof st.roundSeed === "number" ? Math.floor(st.roundSeed) >>> 0 : 0;
+    if (seed === this.syncedRoundSeed) return;
+    this.syncedRoundSeed = seed;
+    this.branches.setRoundSeed(seed);
+    this.branches.precomputeAll();
   }
 
   onBlockedDuplicate(): void {
     const st = this.room.state as unknown as GameStateLike;
+    this.syncBranches(st);
     const me = st.players.get(this.sessionId);
     if (!me) {
       this.queuedPath = null;
       return;
     }
     const trapKnown = trapKnownFromList(me.revealedTrapKeys);
-    this.queuedPath = pickFarthestPath(
+    this.queuedPath = pickBotPath(
+      this.spec.strategy,
       this.branches,
       me.floor,
       me.jumpPower,
       trapKnown,
       Math.random,
-      this.lastSentPath ?? undefined
+      this.lastSentPath ?? undefined,
+      this.spec.correctChance
     );
   }
 
   tick(now: number): void {
     const st = this.room.state as unknown as GameStateLike;
     if (st.matchPhase !== "playing") return;
+    this.syncBranches(st);
 
     if (now < this.nextThinkAt) return;
 
@@ -82,7 +103,16 @@ export class BotRunner {
       path = this.queuedPath;
       this.queuedPath = null;
     } else {
-      path = pickFarthestPath(this.branches, me.floor, me.jumpPower, trapKnown);
+      path = pickBotPath(
+        this.spec.strategy,
+        this.branches,
+        me.floor,
+        me.jumpPower,
+        trapKnown,
+        Math.random,
+        undefined,
+        this.spec.correctChance
+      );
     }
 
     try {
@@ -100,13 +130,4 @@ export class BotRunner {
       this.spec.minThinkMs + Math.random() * (this.spec.maxThinkMs - this.spec.minThinkMs);
     this.nextThinkAt = now + Math.max(80, gap);
   }
-}
-
-export function wireResolution(room: Room, botBySession: Map<string, BotRunner>): void {
-  room.onMessage("resolution", (msg: unknown) => {
-    const m = msg as ResolutionPayload;
-    if (m.blockedDuplicate && m.id) {
-      botBySession.get(m.id)?.onBlockedDuplicate();
-    }
-  });
 }

@@ -10,19 +10,21 @@
       "id": "conservative",
       "label": "conservative",
       "count": 48,
-      "strategy": "random",
+      "strategy": "conservative",
       "minThinkMs": 800,
       "maxThinkMs": 2600,
-      "hintChance": 0.15
+      "hintChance": 0.15,
+      "correctChance": 0.7
     },
     {
       "id": "bold",
       "label": "bold",
       "count": 48,
-      "strategy": "random",
-      "minThinkMs": 400,
-      "maxThinkMs": 1600,
-      "hintChance": 0.025
+      "strategy": "bold",
+      "minThinkMs": 80,
+      "maxThinkMs": 200,
+      "hintChance": 0.025,
+      "correctChance": 0.7
     }
   ]
 }

@@ -5,18 +5,20 @@ const groups: BotGroupSpec[] = [
   {
     id: "conservative",
     label: "conservative",
-    strategy: "random",
+    strategy: "conservative",
     minThinkMs: 800,
     maxThinkMs: 2600,
-    hintChance: 0.15
+    hintChance: 0.15,
+    correctChance: 0.7
   },
   {
     id: "bold",
     label: "bold",
-    strategy: "random",
-    minThinkMs: 400,
-    maxThinkMs: 1600,
-    hintChance: 0.025
+    strategy: "bold",
+    minThinkMs: 80,
+    maxThinkMs: 200,
+    hintChance: 0.025,
+    correctChance: 0.7
   }
 ];
 
@@ -38,7 +40,9 @@ describe("buildBotRowsForCount", () => {
 
   it("uses group strategy specs on each row", () => {
     const rows = buildBotRowsForCount(2, groups);
-    expect(rows[0]!.spec.hintChance).toBe(0.15);
-    expect(rows[1]!.spec.hintChance).toBe(0.025);
+    expect(rows[0]!.spec.strategy).toBe("conservative");
+    expect(rows[0]!.spec.correctChance).toBe(0.7);
+    expect(rows[1]!.spec.strategy).toBe("bold");
+    expect(rows[1]!.spec.maxThinkMs).toBe(200);
   });
 });

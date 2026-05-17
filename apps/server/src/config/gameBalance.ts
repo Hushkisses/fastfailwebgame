@@ -4,11 +4,9 @@ export const gameBalance = {
 
   goalFloor: 100,
 
-  /** 레벨 높을수록 XOR 함정 비중 상승 시드에 사용 */
+  /** 라운드 맵: 층마다 좌측이 정답(안전)일 확률 (우측 = 1 - 이 값) */
 
-  trapBaseChance: 0.42,
-
-  trapPerFloorRaise: 0.004,
+  safeSideLeftChance: 0.6,
 
 
 

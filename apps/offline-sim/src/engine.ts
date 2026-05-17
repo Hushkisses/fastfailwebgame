@@ -114,6 +114,9 @@ export function runOneBot(
   const rnd = () => rng();
 
   const branches = new LevelBranchGenerator();
+  const mapSeed = (baseSeed + groupIndex * 1_000_003 + botIndex * 17_389) >>> 0;
+  branches.setRoundSeed(mapSeed);
+  branches.precomputeAll();
   const id = `${profile.id}-${botIndex}`;
   const p = createSoloPlayer(id, `${profile.label}#${botIndex}`);
   let virtualNow = 1_000_000;

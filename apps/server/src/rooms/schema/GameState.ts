@@ -64,5 +64,7 @@ export class GameState extends Schema {
   @type({ map: HintResult }) hints = new MapSchema<HintResult>();
   /** "waiting" | "playing" | "ended" — 관리자 시작 전·종료 후에는 타일·힌트 비활성 */
   @type("string") matchPhase = "waiting";
+  /** 라운드마다 타일 좌/우 정답 배치를 섞는 시드 (클라·봇 동기화) */
+  @type("number") roundSeed = 0;
   @type([RoundStatEntry]) lastRoundStats = new ArraySchema<RoundStatEntry>();
 }

@@ -9,6 +9,8 @@ export interface RecentTileStripProps {
   ariaLeft: string;
   ariaRight: string;
   ariaEmpty: string;
+  /** 최근 선택 UI 코호트에만 표시 (좌/우 정답 비율 안내) */
+  ratioHint?: string;
 }
 
 export function RecentTileStrip({
@@ -16,7 +18,8 @@ export function RecentTileStrip({
   label,
   ariaLeft,
   ariaRight,
-  ariaEmpty
+  ariaEmpty,
+  ratioHint
 }: RecentTileStripProps): ReactElement {
   const cells: (TileChoiceSide | null)[] = [];
   for (let i = 0; i < RECENT_TILE_CHOICE_COUNT; i++) {
@@ -49,6 +52,7 @@ export function RecentTileStrip({
           title: side === "left" ? ariaLeft : side === "right" ? ariaRight : undefined
         })
       )
-    )
+    ),
+    ratioHint ? createElement("p", { className: styles.recentRatioHint }, ratioHint) : null
   );
 }

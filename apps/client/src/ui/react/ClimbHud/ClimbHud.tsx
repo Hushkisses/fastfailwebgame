@@ -53,6 +53,7 @@ export function ClimbHud(): ReactElement {
           ariaLeft={t("hud.recentTileLeft")}
           ariaRight={t("hud.recentTileRight")}
           ariaEmpty={t("hud.recentTileEmpty")}
+          ratioHint={t("hud.safeSideRatioHint")}
         />
       ) : null}
       <div className={styles.status}>{messages.join("\n")}</div>

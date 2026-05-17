@@ -2,17 +2,13 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client, type Room } from "colyseus.js";
+import { BotRunner } from "../../server/src/bots/BotRunner.js";
 import {
-  type Side,
   expandBotRows,
   loadOnlineSimConfig,
   parseGroupFromDisplayName,
-  type OnlineSimConfig,
-  type StrategySpec
+  type OnlineSimConfig
 } from "./config.js";
-import { LevelBranchGenerator } from "../../server/src/core/grid.js";
-import { pickFarthestPath, trapKnownFromList } from "../../server/src/bots/botPick.js";
-import { type GameStateLike, type ResolutionPayload } from "./ledger.js";
 
 const ROOM_NAME = "failure-growth";
 const MAX_ROOM_CLIENTS = 100;
@@ -83,97 +79,6 @@ function csvEscape(s: string | number | boolean): string {
   return t;
 }
 
-function wireResolution(room: Room, botBySession: Map<string, BotRunner>): void {
-  room.onMessage("resolution", (msg: unknown) => {
-    const m = msg as ResolutionPayload;
-    if (m.blockedDuplicate && m.id) {
-      botBySession.get(m.id)?.onBlockedDuplicate();
-    }
-  });
-}
-
-class BotRunner {
-  readonly sessionId: string;
-  nextThinkAt = 0;
-  queuedPath: Side[] | null = null;
-  lastSentPath: Side[] | null = null;
-  private readonly branches = new LevelBranchGenerator();
-
-  constructor(
-    readonly room: Room,
-    readonly displayName: string,
-    readonly groupId: string,
-    readonly spec: StrategySpec
-  ) {
-    this.sessionId = room.sessionId;
-  }
-
-  onBlockedDuplicate(): void {
-    const st = this.room.state as unknown as GameStateLike;
-    const me = st.players.get(this.sessionId);
-    if (!me) {
-      this.queuedPath = null;
-      return;
-    }
-    const trapKnown = trapKnownFromList(me.revealedTrapKeys);
-    this.queuedPath = pickFarthestPath(
-      this.branches,
-      me.floor,
-      me.jumpPower,
-      trapKnown,
-      Math.random,
-      this.lastSentPath ?? undefined
-    );
-  }
-
-  tick(now: number): void {
-    const st = this.room.state as unknown as GameStateLike;
-    if (st.matchPhase !== "playing") return;
-
-    if (now < this.nextThinkAt) return;
-
-    const me = st.players.get(this.sessionId);
-    if (!me || me.hasWon) return;
-    if (me.respawnAvailableAt > now) {
-      this.nextThinkAt = now + 120;
-      return;
-    }
-
-    if (Math.random() < this.spec.hintChance) {
-      try {
-        this.room.send("requestHint");
-      } catch {
-        /* noop */
-      }
-    }
-
-    const trapKnown = trapKnownFromList(me.revealedTrapKeys);
-    let path: Side[];
-    if (this.queuedPath !== null) {
-      path = this.queuedPath;
-      this.queuedPath = null;
-    } else {
-      path = pickFarthestPath(this.branches, me.floor, me.jumpPower, trapKnown);
-    }
-
-    try {
-      if (path.length === 1) {
-        this.room.send("chooseTile", { side: path[0] });
-      } else {
-        this.room.send("chooseTile", { sides: path });
-      }
-    } catch {
-      return;
-    }
-
-    this.lastSentPath = path;
-
-    const gap =
-      this.spec.minThinkMs + Math.random() * (this.spec.maxThinkMs - this.spec.minThinkMs);
-    this.nextThinkAt = now + Math.max(80, gap);
-  }
-}
-
 async function main(): Promise<void> {
   const { configPath } = parseArgs();
   const configAbs = resolve(configPath);
@@ -184,7 +89,6 @@ async function main(): Promise<void> {
     rows.length = MAX_ROOM_CLIENTS;
   }
 
-  const botBySession = new Map<string, BotRunner>();
   const bots: BotRunner[] = [];
 
   let roomId: string;
@@ -202,8 +106,6 @@ async function main(): Promise<void> {
     roomId = first.roomId;
     const br = new BotRunner(first, rows[0]!.displayName, rows[0]!.groupId, rows[0]!.spec);
     bots.push(br);
-    botBySession.set(br.sessionId, br);
-    wireResolution(bots[0]!.room, botBySession);
     console.log(`[online-sim] 첫 봇 생성 방 ${roomId} (adminPassword 없음 — 라운드는 관리자 UI에서 시작)`);
 
     for (let i = 1; i < rows.length; i++) {
@@ -212,7 +114,6 @@ async function main(): Promise<void> {
       const room = await cl.joinById(roomId, { name: rows[i]!.displayName });
       const b = new BotRunner(room, rows[i]!.displayName, rows[i]!.groupId, rows[i]!.spec);
       bots.push(b);
-      botBySession.set(b.sessionId, b);
     }
 
     const tick = setInterval(() => {
@@ -234,11 +135,8 @@ async function main(): Promise<void> {
     const room = await cl.joinById(roomId, { name: rows[i]!.displayName });
     const b = new BotRunner(room, rows[i]!.displayName, rows[i]!.groupId, rows[i]!.spec);
     bots.push(b);
-    botBySession.set(b.sessionId, b);
   }
   console.log(`[online-sim] 봇 ${bots.length}명 입장`);
-
-  wireResolution(bots[0]!.room, botBySession);
 
   adminRoom!.send("adminStart");
   await sleep(400);

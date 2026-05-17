@@ -2,7 +2,7 @@ import { Application } from "pixi.js";
 import { ensureAudio, playThemeSting } from "./audio/themePad";
 import { mountReactHud } from "./bootstrap";
 import { THEME_EVERY_FLOORS } from "./config/climbConfig";
-import { collectActiveHints } from "./hint/collectHints";
+import { applySelfHintGranted, clearSelfHints, getSelfActiveHints } from "./hint/selfHintStore";
 import { htmlLang, type Locale } from "./i18n";
 import { LevelBranchGenerator } from "./logic/levelBranch";
 import { buildPickTargets } from "./logic/pickPath";
@@ -16,6 +16,7 @@ import type { BoardRow } from "./ui/react/Leaderboard/boardTypes";
 
 /** 서버와 동일 XOR — 반짝/히트 타일 미리 계산용 */
 const branchPreview = new LevelBranchGenerator();
+let lastBranchRoundSeed = -1;
 
 function defaultModel(): ClimbHudModel {
   return {
@@ -47,6 +48,19 @@ function bindHintActions(net: GameNetwork, room: GameRoomLike): void {
     const msg = (raw ?? {}) as { nextAt?: number };
     const nextAt = typeof msg?.nextAt === "number" ? msg.nextAt : 0;
     useHudStore.getState().setHintCooldownUntil(nextAt);
+  });
+  room.onMessage("hintGranted", (raw: unknown) => {
+    const msg = (raw ?? {}) as {
+      floor?: number;
+      safeSide?: string;
+      expiresAt?: number;
+      nickname?: string;
+    };
+    const nickname =
+      typeof msg.nickname === "string" && msg.nickname.length > 0
+        ? msg.nickname
+        : room.sessionId.slice(0, 5);
+    applySelfHintGranted(msg, room.sessionId, nickname);
   });
 }
 
@@ -97,29 +111,16 @@ async function startSession(
 
   room.onMessage("resolution", (raw: unknown) => {
     const msg = raw as ResolutionEvent;
-    if (msg.id === room.sessionId) {
-      if (
-        pendingPickPath &&
-        !msg.blockedDuplicate &&
-        !msg.respawnLocked &&
-        useHudStore.getState().showRecentTileStrip
-      ) {
-        useHudStore.getState().pushRecentTileChoices(pendingPickPath);
-      }
-      pendingPickPath = null;
-    }
+    if (msg.id !== room.sessionId) return;
     if (
-      msg.id !== room.sessionId &&
-      !msg.success &&
+      pendingPickPath &&
       !msg.blockedDuplicate &&
-      msg.toFloor === 1
+      !msg.respawnLocked &&
+      useHudStore.getState().showRecentTileStrip
     ) {
-      const side = parseSide(msg.trailMark?.side ?? "left");
-      climb.handleRemoteFall(msg.id, msg.fromFloor + 1, side);
+      useHudStore.getState().pushRecentTileChoices(pendingPickPath);
     }
-    if (msg.id === room.sessionId && !msg.success && !msg.blockedDuplicate && msg.toFloor === 1) {
-      climb.triggerLocalGlassBreak(msg.fromFloor + 1, parseSide(msg.trailMark?.side ?? "left"));
-    }
+    pendingPickPath = null;
   });
 
   function pullFromPlayer(p: Record<string, unknown>): void {
@@ -158,12 +159,6 @@ async function startSession(
       if (id === room.sessionId) self = p;
     });
 
-    const nameBySid = new Map<string, string>();
-    stateAny().players?.forEach((pRecord: unknown, id: string) => {
-      const r = (pRecord as Record<string, unknown>) ?? {};
-      nameBySid.set(id, String(r.name ?? id.slice(0, 4)));
-    });
-
     let trapKnown = new Set<string>();
     let selfSide = parseSide("left");
     if (self) {
@@ -178,6 +173,15 @@ async function startSession(
     const respawnLockedServer = !!(model.respawnAvailableAt && nowMs < model.respawnAvailableAt);
 
     const stateRecord = room.state as Record<string, unknown>;
+    const roundSeedRaw = stateRecord.roundSeed;
+    const roundSeed =
+      typeof roundSeedRaw === "number" ? Math.floor(roundSeedRaw) >>> 0 : Number(roundSeedRaw ?? 0) >>> 0;
+    if (roundSeed !== lastBranchRoundSeed) {
+      lastBranchRoundSeed = roundSeed;
+      branchPreview.setRoundSeed(roundSeed);
+      branchPreview.precomputeAll();
+    }
+
     const rawPhase = stateRecord.matchPhase;
     const matchPhase =
       rawPhase === "ended" ? "ended" : rawPhase === "playing" ? "playing" : "waiting";
@@ -186,6 +190,7 @@ async function startSession(
       useHudStore.getState().setMultiMatchPhase(matchPhase);
       if (matchPhase === "playing" && lastMultiMatchPhase !== "playing") {
         useHudStore.getState().clearRecentTileChoices();
+        clearSelfHints();
       }
       lastMultiMatchPhase = matchPhase;
     }
@@ -222,7 +227,7 @@ async function startSession(
       if (visualKey) brokenKeys.add(visualKey);
     });
 
-    const activeHints = collectActiveHints(room.state as never, nameBySid);
+    const activeHints = getSelfActiveHints();
 
     climb.syncWorld({
       screenW: typeof window !== "undefined" ? window.innerWidth : 960,

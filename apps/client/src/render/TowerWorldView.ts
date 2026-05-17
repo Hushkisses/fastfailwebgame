@@ -402,21 +402,14 @@ export class TowerWorldView {
   private layoutHintTexts(
     rows: HintFlash[],
     serverNow: number,
-    viewerFloor: number,
-    selectableHops: number
+    _viewerFloor: number,
+    _selectableHops: number
   ): void {
-    let i = 0;
-    for (const h of rows) {
-      if (serverNow >= h.expiresAt) continue;
-      if (i >= this.hintTexts.length) break;
-      const lbl = this.hintTexts[i++];
-      const p = tileWorldPos(h.floor, h.safeSide, viewerFloor, selectableHops);
-      const nn = h.nickname.length > 14 ? `${h.nickname.slice(0, 13)}…` : h.nickname;
-      lbl.text = nn;
-      lbl.position.set(p.x, p.y - ISO_TOP_HV * p.scale - 96 * p.scale);
-      lbl.visible = true;
+    for (let i = 0; i < this.hintTexts.length; i++) {
+      this.hintTexts[i].visible = false;
     }
-    for (; i < this.hintTexts.length; i++) this.hintTexts[i].visible = false;
+    void rows;
+    void serverNow;
   }
 
   private layoutCharacters(inp: TowerSyncInput, lo: number, hi: number, perf: number): void {
@@ -490,12 +483,12 @@ export class TowerWorldView {
         const rI = self ? (many ? 6 : 8) : many ? 4 : 6;
         slot.body.clear().circle(0, 0, rO).stroke({
           width: self ? 2.5 : 1.2,
-          color: self ? 0x1a8fd8 : 0x4a5a78,
+          color: self ? 0x000000 : 0x4a5a78,
           alpha: self ? 0.95 : 0.55
         });
         slot.body.circle(0, 0, rI).fill({
-          color: self ? 0x1a8fd8 : 0x607890,
-          alpha: self ? 0.75 : 0.55
+          color: self ? 0x111111 : 0x607890,
+          alpha: self ? 0.92 : 0.55
         });
 
         slot.label.anchor.set(0.5, 1);
@@ -508,7 +501,7 @@ export class TowerWorldView {
           slot.label.text = `YOU · ${raw}`;
           slot.label.style.fontSize = 11;
           slot.label.style.fontWeight = "800";
-          slot.label.style.fill = 0x1a8fd8;
+          slot.label.style.fill = 0x000000;
           slot.label.style.stroke = { color: 0xffffff, width: 4 };
           slot.label.style.align = "center";
           slot.label.style.lineHeight = 13;

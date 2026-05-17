@@ -1,6 +1,6 @@
 import { Client } from "colyseus.js";
 import { botServerUrl, buildBotRowsForCount, loadBotFillConfig } from "./botConfig.js";
-import { BotRunner, wireResolution } from "./BotRunner.js";
+import { BotRunner } from "./BotRunner.js";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -54,7 +54,6 @@ export class RoomBotOrchestrator {
 
     const rows = buildBotRowsForCount(deficit, cfg.groups);
     const url = botServerUrl();
-    const botBySession = new Map<string, BotRunner>();
     const joined: BotRunner[] = [];
 
     console.log(
@@ -82,7 +81,6 @@ export class RoomBotOrchestrator {
           }
           const bot = new BotRunner(room, row.displayName, row.groupId, row.spec);
           joined.push(bot);
-          botBySession.set(bot.sessionId, bot);
         }
       };
 
@@ -96,10 +94,6 @@ export class RoomBotOrchestrator {
     if (gen !== this.fillGeneration) {
       await Promise.all(joined.map((b) => b.room.leave().catch(() => 0)));
       return;
-    }
-
-    if (joined.length > 0) {
-      wireResolution(joined[0]!.room, botBySession);
     }
 
     this.bots = joined;

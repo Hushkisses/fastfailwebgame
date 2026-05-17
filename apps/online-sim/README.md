@@ -4,7 +4,7 @@
 
 - **실행 중인 게임 서버**가 필요합니다. 저장소 루트에서 `npm run dev`로 서버(및 필요 시 클라이언트)를 띄운 뒤 시뮬레이터를 실행하세요.
 - `online-sim-config.example.json`을 복사해 `online-sim-config.json`을 만든 뒤, `url`·봇 그룹 등을 환경에 맞게 수정하세요.
-- 각 그룹의 `strategy`는 **`random`만** 지원합니다.
+- 각 그룹의 `strategy`는 **`bold`**(짧게 생각·먼 칸 중 무작위) 또는 **`conservative`**(길게 생각·먼 칸 중 70% 안전 경로)입니다. 예전 `random`은 그룹 id에 따라 bold/conservative로 해석됩니다.
 
 ## 관리자 비밀번호
 
