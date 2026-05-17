@@ -248,9 +248,19 @@ async function writeStats(cfg: OnlineSimConfig, configAbs: string, room: Room): 
   mkdirSync(outDir, { recursive: true });
   const st = room.state as unknown as GameStateLike;
   const lines: string[] = [
-    ["groupId", "botIndex", "name", "rank", "failCount", "bestFloorReached", "currentFloor", "failEnergy", "hasWon"].join(
-      ","
-    )
+    [
+      "groupId",
+      "botIndex",
+      "name",
+      "rank",
+      "failCount",
+      "bestFloorReached",
+      "currentFloor",
+      "failEnergy",
+      "hasWon",
+      "avgSelectionWaitSec",
+      "showRecentTileStrip"
+    ].join(",")
   ];
   const stats = st.lastRoundStats;
   if (!stats || typeof stats.length !== "number" || stats.length === 0) {
@@ -266,7 +276,19 @@ async function writeStats(cfg: OnlineSimConfig, configAbs: string, room: Room): 
     const groupId = parsed?.groupId ?? "";
     const botIndex = parsed?.index ?? "";
     lines.push(
-      [groupId, botIndex, row.name, row.rank, row.failCount, row.bestFloorReached, row.currentFloor, row.failEnergy, row.hasWon]
+      [
+        groupId,
+        botIndex,
+        row.name,
+        row.rank,
+        row.failCount,
+        row.bestFloorReached,
+        row.currentFloor,
+        row.failEnergy,
+        row.hasWon,
+        row.avgSelectionWaitSec ?? 0,
+        row.showRecentTileStrip ? 1 : 0
+      ]
         .map(csvEscape)
         .join(",")
     );

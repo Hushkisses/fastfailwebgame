@@ -8,7 +8,14 @@ import type { NumericStatKey } from "./statScatter";
 import type { StatRowView } from "./statTypes";
 import styles from "./AdminPanel.module.css";
 
-export type StatSortKey = "rank" | "name" | "failCount" | "bestFloor" | "currentFloor";
+export type StatSortKey =
+  | "rank"
+  | "name"
+  | "failCount"
+  | "bestFloor"
+  | "currentFloor"
+  | "avgSelectionWait"
+  | "recentTileStrip";
 export type StatSortDir = "asc" | "desc";
 
 function readStatsFromState(state: unknown): StatRowView[] {
@@ -29,13 +36,20 @@ function readStatsFromState(state: unknown): StatRowView[] {
     const currentFloor = Number.isFinite(currentFloorRaw) ? currentFloorRaw : bestFloorReached;
     const failEnergy =
       typeof raw.failEnergy === "number" ? raw.failEnergy : Number(raw.failEnergy ?? 0);
+    const avgWaitRaw =
+      typeof raw.avgSelectionWaitSec === "number"
+        ? raw.avgSelectionWaitSec
+        : Number(raw.avgSelectionWaitSec ?? 0);
+    const avgSelectionWaitSec = Number.isFinite(avgWaitRaw) ? avgWaitRaw : 0;
     rows.push({
       name: String(raw.name ?? ""),
       rank: rankRaw > 0 ? rankRaw : i + 1,
       failCount,
       bestFloorReached,
       currentFloor,
-      failEnergy
+      failEnergy,
+      avgSelectionWaitSec,
+      showRecentTileStrip: Boolean(raw.showRecentTileStrip)
     });
   }
   return rows;
@@ -46,10 +60,23 @@ function defaultSortDir(key: StatSortKey): StatSortDir {
   return "desc";
 }
 
+function formatAvgWaitSec(sec: number): string {
+  return sec.toFixed(2);
+}
+
+function formatRecentStripCohort(shown: boolean, t: (key: string) => string): string {
+  return shown ? t("admin.recentStripShown") : t("admin.recentStripHidden");
+}
+
 function compareRows(a: StatRowView, b: StatRowView, key: StatSortKey, dir: StatSortDir): number {
   const sign = dir === "asc" ? 1 : -1;
   if (key === "name") {
     return a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) * sign;
+  }
+  if (key === "recentTileStrip") {
+    const cmp = Number(a.showRecentTileStrip) - Number(b.showRecentTileStrip);
+    if (cmp !== 0) return cmp * sign;
+    return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
   }
   const va =
     key === "rank"
@@ -58,7 +85,9 @@ function compareRows(a: StatRowView, b: StatRowView, key: StatSortKey, dir: Stat
         ? a.failCount
         : key === "currentFloor"
           ? a.currentFloor
-          : a.bestFloorReached;
+          : key === "avgSelectionWait"
+            ? a.avgSelectionWaitSec
+            : a.bestFloorReached;
   const vb =
     key === "rank"
       ? b.rank
@@ -66,7 +95,9 @@ function compareRows(a: StatRowView, b: StatRowView, key: StatSortKey, dir: Stat
         ? b.failCount
         : key === "currentFloor"
           ? b.currentFloor
-          : b.bestFloorReached;
+          : key === "avgSelectionWait"
+            ? b.avgSelectionWaitSec
+            : b.bestFloorReached;
   if (va !== vb) return (va - vb) * sign;
   return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
 }
@@ -161,6 +192,8 @@ export function AdminPanel(): ReactElement | null {
         return t("admin.colCurrentFloor");
       case "failEnergy":
         return t("admin.colEnergy");
+      case "avgSelectionWaitSec":
+        return t("admin.colAvgSelectionWait");
     }
   };
 
@@ -265,6 +298,26 @@ export function AdminPanel(): ReactElement | null {
                       {sortArrow("currentFloor")}
                     </button>
                   </th>
+                  <th className={`${styles.th} ${styles.thNum}`}>
+                    <button
+                      type="button"
+                      className={styles.thBtn}
+                      onClick={() => toggleSort("avgSelectionWait")}
+                    >
+                      {t("admin.colAvgSelectionWait")}
+                      {sortArrow("avgSelectionWait")}
+                    </button>
+                  </th>
+                  <th className={styles.th}>
+                    <button
+                      type="button"
+                      className={styles.thBtn}
+                      onClick={() => toggleSort("recentTileStrip")}
+                    >
+                      {t("admin.colRecentTileStrip")}
+                      {sortArrow("recentTileStrip")}
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -275,6 +328,10 @@ export function AdminPanel(): ReactElement | null {
                     <td className={`${styles.td} ${styles.tdNum}`}>{row.failCount}</td>
                     <td className={`${styles.td} ${styles.tdNum}`}>{row.bestFloorReached}</td>
                     <td className={`${styles.td} ${styles.tdNum}`}>{row.currentFloor}</td>
+                    <td className={`${styles.td} ${styles.tdNum}`}>
+                      {formatAvgWaitSec(row.avgSelectionWaitSec)}
+                    </td>
+                    <td className={styles.td}>{formatRecentStripCohort(row.showRecentTileStrip, t)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -294,12 +351,14 @@ export function AdminPanel(): ReactElement | null {
             axisLabel={axisLabel}
             pairTitle={pairTitle}
             sectionTitle={t("admin.scatterSectionTitle")}
-            sectionHint={t("admin.scatterSortHint")}
-            showAllLabel={t("admin.scatterShowAll")}
-            showLessLabel={t("admin.scatterShowLess")}
+            axisXLabel={t("admin.scatterAxisX")}
+            axisYLabel={t("admin.scatterAxisY")}
+            sameAxisError={t("admin.scatterSameAxis")}
             legendConservative={t("admin.scatterLegendConservative")}
             legendBold={t("admin.scatterLegendBold")}
             legendOther={t("admin.scatterLegendOther")}
+            legendStripShown={t("admin.scatterLegendStripShown")}
+            legendStripHidden={t("admin.scatterLegendStripHidden")}
           />
         )}
 

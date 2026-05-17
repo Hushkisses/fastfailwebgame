@@ -39,6 +39,8 @@ export interface RoundStatLike {
   currentFloor: number;
   failEnergy: number;
   hasWon: boolean;
+  avgSelectionWaitSec: number;
+  showRecentTileStrip: boolean;
 }
 
 function rndSide(rnd: () => number): Side {

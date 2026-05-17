@@ -7,6 +7,7 @@ import {
   type SoloAuraTier
 } from "./soloBalance";
 import { LevelBranchGenerator, type Side } from "../logic/levelBranch";
+import { assignShowRecentTileStrip } from "../state/recentTileStripCohort";
 
 /** 서버 `PlayerState` 와 동일한 필드 (오프라인 모드용 평범한 객체) */
 export interface SoloPlayer {
@@ -25,6 +26,7 @@ export interface SoloPlayer {
   hasWon: boolean;
   revealedTrapKeys: string[];
   respawnAvailableAt: number;
+  showRecentTileStrip: boolean;
 }
 
 export interface SoloTrail {
@@ -55,7 +57,8 @@ export function createSoloPlayer(id: string, name: string): SoloPlayer {
     lastHintAt: 0,
     hasWon: false,
     revealedTrapKeys: [],
-    respawnAvailableAt: 0
+    respawnAvailableAt: 0,
+    showRecentTileStrip: assignShowRecentTileStrip([])
   };
 }
 

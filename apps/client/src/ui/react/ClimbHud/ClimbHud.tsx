@@ -1,8 +1,9 @@
-import type { ReactElement } from "react";
+﻿import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 import { CLIENT_GOAL_FLOOR } from "../../../config/climbConfig";
 import { useHudStore } from "../../../state/hudStore";
 import { useT } from "../useT";
+import { RecentTileStrip } from "./RecentTileStrip";
 import styles from "./ClimbHud.module.css";
 
 const FAIL_ENERGY_STAGE_THRESHOLDS = [0, 180, 600] as const;
@@ -17,7 +18,7 @@ function failEnergyProgress(failEnergy: number): number {
   return 1;
 }
 
-/** 리스폰 카운트다운만 100ms 주기로 갱신 (다른 부분은 store 변화에만 반응) */
+/** ??? ?????? 100ms ??? ?? (?? ??? store ???? ??) */
 function useRespawnWait(respawnAvailableAt: number): number {
   const [wait, setWait] = useState(() => computeWait(respawnAvailableAt));
   useEffect(() => {
@@ -41,6 +42,8 @@ function computeWait(respawnAvailableAt: number): number {
 export function ClimbHud(): ReactElement {
   const t = useT();
   const model = useHudStore((s) => s.model);
+  const recentTileChoices = useHudStore((s) => s.recentTileChoices);
+  const showRecentTileStrip = useHudStore((s) => s.showRecentTileStrip);
   const wait = useRespawnWait(model.respawnAvailableAt);
 
   const fillPct = `${failEnergyProgress(model.failEnergy) * 100}%`;
@@ -61,6 +64,15 @@ export function ClimbHud(): ReactElement {
       <div className={styles.energyBar}>
         <div className={styles.energyFill} style={{ width: fillPct }} />
       </div>
+      {showRecentTileStrip ? (
+        <RecentTileStrip
+          choices={recentTileChoices}
+          label={t("hud.recentTilesLabel")}
+          ariaLeft={t("hud.recentTileLeft")}
+          ariaRight={t("hud.recentTileRight")}
+          ariaEmpty={t("hud.recentTileEmpty")}
+        />
+      ) : null}
       <div className={styles.status}>{messages.join("\n")}</div>
     </div>
   );

@@ -3,6 +3,15 @@ import { gameBalance } from "../config/gameBalance.js";
 import { loadAdminConfig } from "../adminConfig.js";
 import { LevelBranchGenerator, type Side } from "../core/grid.js";
 import { refreshPlayerStats, resolveChoice } from "../core/resolver.js";
+import { assignShowRecentTileStrip } from "../core/recentTileStripCohort.js";
+import {
+  averageSelectionWaitSec,
+  canAcceptTileChoice,
+  openChoiceWindow,
+  recordSelectionWaitOnChoose,
+  resetSelectionWait,
+  scheduleChoiceWindowAfterResolve
+} from "../core/selectionWait.js";
 import { RoomBotOrchestrator } from "../bots/RoomBotOrchestrator.js";
 import {
   GameState,
@@ -35,6 +44,7 @@ function resetPlayerForRound(player: PlayerState, id: string, name: string): voi
   player.lastHintAt = 0;
   player.revealedTrapKeys.clear();
   player.respawnAvailableAt = 0;
+  resetSelectionWait(player);
   refreshPlayerStats(player);
 }
 
@@ -64,7 +74,16 @@ export class GameRoom extends Room<GameState> {
       const player = this.state.players.get(client.sessionId);
       if (!player || player.hasWon) return;
 
-      const result = resolveChoice(player, path, this.branches, Date.now());
+      const now = Date.now();
+      const choosable = canAcceptTileChoice(player, now);
+      if (choosable) {
+        recordSelectionWaitOnChoose(player, now);
+      }
+
+      const result = resolveChoice(player, path, this.branches, now);
+      if (choosable) {
+        scheduleChoiceWindowAfterResolve(player, result, now);
+      }
 
       const payload = {
         id: client.sessionId,
@@ -168,8 +187,10 @@ export class GameRoom extends Room<GameState> {
       this.state.hints.delete(id);
     }
 
+    const roundStart = Date.now();
     this.state.players.forEach((player, id) => {
       resetPlayerForRound(player, id, player.name);
+      openChoiceWindow(player, roundStart);
     });
   }
 
@@ -212,6 +233,8 @@ export class GameRoom extends Room<GameState> {
       row.currentFloor = player.floor;
       row.failEnergy = player.failEnergy;
       row.hasWon = player.hasWon;
+      row.avgSelectionWaitSec = averageSelectionWaitSec(player);
+      row.showRecentTileStrip = player.showRecentTileStrip;
       this.state.lastRoundStats.push(row);
     }
   }
@@ -237,8 +260,16 @@ export class GameRoom extends Room<GameState> {
 
     const player = new PlayerState();
     const name = options?.name ?? `Player-${client.sessionId.slice(0, 4)}`;
+    const existingCohorts: boolean[] = [];
+    this.state.players.forEach((p) => {
+      existingCohorts.push(p.showRecentTileStrip);
+    });
     resetPlayerForRound(player, client.sessionId, name);
+    player.showRecentTileStrip = assignShowRecentTileStrip(existingCohorts);
     this.state.players.set(client.sessionId, player);
+    if (this.state.matchPhase === "playing") {
+      openChoiceWindow(player, Date.now());
+    }
   }
 
   onLeave(client: Client): void {

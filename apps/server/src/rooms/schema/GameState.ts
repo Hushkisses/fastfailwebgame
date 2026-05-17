@@ -22,6 +22,12 @@ export class PlayerState extends Schema {
   @type(["string"]) revealedTrapKeys = new ArraySchema<string>();
   /** 이 시각(ms) 이전까지 타일 선택 불가 (추락 후 부활 대기) */
   @type("number") respawnAvailableAt = 0;
+  /** 다음 선택 가능 시각 — 0이면 창 닫힘 (통계용, 클라이언트 UI 비표시) */
+  @type("number") choiceWindowOpenedAt = 0;
+  @type("number") selectionWaitTotalMs = 0;
+  @type("number") selectionChoiceCount = 0;
+  /** 최근 타일 막대 UI 표시 여부 (접속 시 방 기준 ~50% 배정) */
+  @type("boolean") showRecentTileStrip = false;
 }
 
 export class TrailMark extends Schema {
@@ -47,6 +53,9 @@ export class RoundStatEntry extends Schema {
   @type("number") failCount = 0;
   /** 종료 시점 현재 층 */
   @type("number") currentFloor = 1;
+  /** 선택당 평균 대기 시간(초) — 발판 앞에서 chooseTile 보내기까지 */
+  @type("number") avgSelectionWaitSec = 0;
+  @type("boolean") showRecentTileStrip = false;
 }
 
 export class GameState extends Schema {

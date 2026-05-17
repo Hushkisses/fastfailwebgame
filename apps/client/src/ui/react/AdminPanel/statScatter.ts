@@ -1,14 +1,21 @@
 import type { StatRowView } from "./statTypes";
 
 /** 산점도에 쓰는 숫자형 통계 열 */
-export type NumericStatKey = "rank" | "failCount" | "bestFloorReached" | "currentFloor" | "failEnergy";
+export type NumericStatKey =
+  | "rank"
+  | "failCount"
+  | "bestFloorReached"
+  | "currentFloor"
+  | "failEnergy"
+  | "avgSelectionWaitSec";
 
 export const NUMERIC_STAT_KEYS: NumericStatKey[] = [
   "failCount",
   "currentFloor",
   "bestFloorReached",
   "rank",
-  "failEnergy"
+  "failEnergy",
+  "avgSelectionWaitSec"
 ];
 
 export const PRIMARY_STAT_PAIRS: [NumericStatKey, NumericStatKey][] = [
@@ -64,6 +71,8 @@ export function statValue(row: StatRowView, key: NumericStatKey): number {
       return row.currentFloor;
     case "failEnergy":
       return row.failEnergy;
+    case "avgSelectionWaitSec":
+      return row.avgSelectionWaitSec;
   }
 }
 
@@ -89,16 +98,54 @@ export function computeDomain(values: number[]): PlotDomain {
   return { min: min - pad, max: max + pad };
 }
 
-export function scaleLinear(v: number, domain: PlotDomain, rangeMin: number, rangeMax: number): number {
+/** 값 → 픽셀. `invert` false: 작은 값이 rangeMin(가로축=왼쪽, 세로축=아래) */
+export function scaleLinear(
+  v: number,
+  domain: PlotDomain,
+  rangeMin: number,
+  rangeMax: number,
+  invert = false
+): number {
   const span = domain.max - domain.min;
   if (span <= 0) return (rangeMin + rangeMax) / 2;
   const t = (v - domain.min) / span;
-  return rangeMax - t * (rangeMax - rangeMin);
+  if (invert) {
+    return rangeMax - t * (rangeMax - rangeMin);
+  }
+  return rangeMin + t * (rangeMax - rangeMin);
 }
 
-/** 봇 그룹 색 — `[conservative:0]` 접두 */
-export function pointColor(name: string): string {
-  if (name.startsWith("[conservative:")) return "#4a7fc8";
-  if (name.startsWith("[bold:")) return "#c85a4a";
-  return "#6a48c8";
+/** 순위는 숫자가 작을수록 좋음 → 축 방향을 반대로 둠 (1위가 오른쪽/위) */
+export function isLowerBetter(key: NumericStatKey): boolean {
+  return key === "rank";
+}
+
+/** 가로축: 값이 클수록 오른쪽 (순위 축만 반전 → 1위가 오른쪽) */
+export function scaleAxisX(
+  v: number,
+  domain: PlotDomain,
+  left: number,
+  right: number,
+  key: NumericStatKey
+): number {
+  return scaleLinear(v, domain, left, right, isLowerBetter(key));
+}
+
+/** 세로축: 값이 클수록 위 (순위 축만 반전 → 1위가 위) */
+export function scaleAxisY(
+  v: number,
+  domain: PlotDomain,
+  top: number,
+  bottom: number,
+  key: NumericStatKey
+): number {
+  return scaleLinear(v, domain, top, bottom, !isLowerBetter(key));
+}
+
+/** 실험 군(막대 UI) 우선, 그다음 봇 접두 */
+export function pointColor(row: StatRowView): string {
+  if (row.showRecentTileStrip) return "#1a8fd8";
+  if (row.name.startsWith("[conservative:")) return "#4a7fc8";
+  if (row.name.startsWith("[bold:")) return "#c85a4a";
+  return "#94a3b8";
 }

@@ -3,6 +3,11 @@ import { getStoredLocale, type Locale } from "../i18n";
 import type { GameRoomLike } from "../net/colyseus";
 import type { ClimbHudModel } from "../render/ClimbStage";
 import type { BoardRow } from "../ui/react/Leaderboard/boardTypes";
+import {
+  pushRecentTileChoices as mergeRecentChoices,
+  recentChoicesEqual,
+  type TileChoiceSide
+} from "./recentTileChoices";
 
 export type AppMode = "gate" | "loading" | "solo" | "multi" | "admin";
 
@@ -54,6 +59,10 @@ export interface HudState {
   adminRoom: GameRoomLike | null;
   /** 멀티 서버 `matchPhase` 미러 (대기 배너용) */
   multiMatchPhase: MultiMatchPhase;
+  /** 최근 타일 선택(좌→우 시간순, 최대 10) */
+  recentTileChoices: TileChoiceSide[];
+  /** 서버 배정: 최근 타일 막대 UI 표시 */
+  showRecentTileStrip: boolean;
 
   setLocale: (locale: Locale) => void;
   setMode: (mode: AppMode) => void;
@@ -63,6 +72,9 @@ export interface HudState {
   setOnRequestHint: (fn: () => void) => void;
   setAdminRoom: (room: GameRoomLike | null) => void;
   setMultiMatchPhase: (phase: MultiMatchPhase) => void;
+  pushRecentTileChoices: (sides: readonly TileChoiceSide[]) => void;
+  clearRecentTileChoices: () => void;
+  setShowRecentTileStrip: (show: boolean) => void;
   reset: () => void;
 }
 
@@ -88,6 +100,8 @@ export const useHudStore = create<HudState>((set, get) => ({
   onRequestHint: () => {},
   adminRoom: null,
   multiMatchPhase: "waiting",
+  recentTileChoices: [],
+  showRecentTileStrip: false,
 
   setLocale: (locale) => set({ locale }),
   setMode: (mode) => {
@@ -114,6 +128,19 @@ export const useHudStore = create<HudState>((set, get) => ({
     if (get().multiMatchPhase === multiMatchPhase) return;
     set({ multiMatchPhase });
   },
+  pushRecentTileChoices: (sides) => {
+    const next = mergeRecentChoices(get().recentTileChoices, sides);
+    if (recentChoicesEqual(get().recentTileChoices, next)) return;
+    set({ recentTileChoices: next });
+  },
+  clearRecentTileChoices: () => {
+    if (get().recentTileChoices.length === 0) return;
+    set({ recentTileChoices: [] });
+  },
+  setShowRecentTileStrip: (showRecentTileStrip) => {
+    if (get().showRecentTileStrip === showRecentTileStrip) return;
+    set({ showRecentTileStrip });
+  },
   reset: () =>
     set({
       mode: "gate",
@@ -122,6 +149,8 @@ export const useHudStore = create<HudState>((set, get) => ({
       selfSessionId: "",
       hintCooldownUntil: 0,
       adminRoom: null,
-      multiMatchPhase: "waiting"
+      multiMatchPhase: "waiting",
+      recentTileChoices: [],
+      showRecentTileStrip: false
     })
 }));

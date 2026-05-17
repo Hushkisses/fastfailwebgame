@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { useState } from "react";
 import type { StatRowView } from "./statTypes";
-import { allNumericStatPairs, primaryStatPairs, type NumericStatKey } from "./statScatter";
+import { NUMERIC_STAT_KEYS, type NumericStatKey } from "./statScatter";
 import { StatScatterPlot } from "./StatScatterPlot";
 import styles from "./AdminPanel.module.css";
 
@@ -10,12 +10,14 @@ export interface StatScatterGridProps {
   axisLabel: (key: NumericStatKey) => string;
   pairTitle: (xKey: NumericStatKey, yKey: NumericStatKey) => string;
   sectionTitle: string;
-  sectionHint: string;
-  showAllLabel: string;
-  showLessLabel: string;
+  axisXLabel: string;
+  axisYLabel: string;
+  sameAxisError: string;
   legendConservative: string;
   legendBold: string;
   legendOther: string;
+  legendStripShown: string;
+  legendStripHidden: string;
 }
 
 export function StatScatterGrid({
@@ -23,29 +25,55 @@ export function StatScatterGrid({
   axisLabel,
   pairTitle,
   sectionTitle,
-  sectionHint,
-  showAllLabel,
-  showLessLabel,
+  axisXLabel,
+  axisYLabel,
+  sameAxisError,
   legendConservative,
   legendBold,
-  legendOther
+  legendOther,
+  legendStripShown,
+  legendStripHidden
 }: StatScatterGridProps): ReactElement {
-  const [showAll, setShowAll] = useState(false);
-  const pairs = showAll ? allNumericStatPairs() : primaryStatPairs();
+  const [xKey, setXKey] = useState<NumericStatKey>("failCount");
+  const [yKey, setYKey] = useState<NumericStatKey>("currentFloor");
+
+  const sameAxis = xKey === yKey;
 
   return (
     <section className={styles.scatterSection}>
-      <div className={styles.scatterSectionHead}>
-        <h3 className={styles.scatterSectionTitle}>{sectionTitle}</h3>
-        <button
-          type="button"
-          className={styles.scatterToggle}
-          onClick={() => setShowAll((v) => !v)}
-        >
-          {showAll ? showLessLabel : showAllLabel}
-        </button>
+      <h3 className={styles.scatterSectionTitle}>{sectionTitle}</h3>
+
+      <div className={styles.scatterControls}>
+        <label className={styles.scatterControl}>
+          <span className={styles.scatterControlLabel}>{axisXLabel}</span>
+          <select
+            className={styles.scatterSelect}
+            value={xKey}
+            onChange={(ev) => setXKey(ev.target.value as NumericStatKey)}
+          >
+            {NUMERIC_STAT_KEYS.map((key) => (
+              <option key={key} value={key}>
+                {axisLabel(key)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={styles.scatterControl}>
+          <span className={styles.scatterControlLabel}>{axisYLabel}</span>
+          <select
+            className={styles.scatterSelect}
+            value={yKey}
+            onChange={(ev) => setYKey(ev.target.value as NumericStatKey)}
+          >
+            {NUMERIC_STAT_KEYS.map((key) => (
+              <option key={key} value={key}>
+                {axisLabel(key)}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
-      <p className={styles.sortHint}>{showAll ? sectionHint : ""}</p>
+
       <ul className={styles.scatterLegend}>
         <li>
           <span className={styles.dotConservative} aria-hidden />
@@ -59,20 +87,33 @@ export function StatScatterGrid({
           <span className={styles.dotOther} aria-hidden />
           {legendOther}
         </li>
+        <li>
+          <span className={styles.dotStripShown} aria-hidden />
+          {legendStripShown}
+        </li>
+        <li>
+          <span className={styles.dotStripHidden} aria-hidden />
+          {legendStripHidden}
+        </li>
       </ul>
-      <div className={styles.scatterGrid}>
-        {pairs.map(([xKey, yKey]) => (
+
+      {sameAxis ? (
+        <p className={styles.scatterError} role="alert">
+          {sameAxisError}
+        </p>
+      ) : (
+        <div className={styles.scatterSingle}>
           <StatScatterPlot
-            key={`${xKey}-${yKey}`}
             rows={rows}
             xKey={xKey}
             yKey={yKey}
             xLabel={axisLabel(xKey)}
             yLabel={axisLabel(yKey)}
             title={pairTitle(xKey, yKey)}
+            large
           />
-        ))}
-      </div>
+        </div>
+      )}
     </section>
   );
 }

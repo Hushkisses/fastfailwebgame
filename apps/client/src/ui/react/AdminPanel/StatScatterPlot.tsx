@@ -3,18 +3,20 @@ import type { StatRowView } from "./statTypes";
 import {
   computeDomain,
   pointColor,
-  scaleLinear,
+  scaleAxisX,
+  scaleAxisY,
   statValue,
   type NumericStatKey,
   type PlotDomain
 } from "./statScatter";
 import styles from "./AdminPanel.module.css";
 
-const W = 420;
-const H = 260;
+const SIZE = {
+  normal: { w: 420, h: 260 },
+  large: { w: 720, h: 360 }
+} as const;
+
 const MARGIN = { top: 16, right: 16, bottom: 40, left: 48 };
-const PLOT_W = W - MARGIN.left - MARGIN.right;
-const PLOT_H = H - MARGIN.top - MARGIN.bottom;
 
 export interface StatScatterPlotProps {
   rows: StatRowView[];
@@ -23,6 +25,7 @@ export interface StatScatterPlotProps {
   xLabel: string;
   yLabel: string;
   title: string;
+  large?: boolean;
 }
 
 function formatTick(v: number): string {
@@ -37,8 +40,13 @@ export function StatScatterPlot({
   yKey,
   xLabel,
   yLabel,
-  title
+  title,
+  large = false
 }: StatScatterPlotProps): ReactElement {
+  const { w: W, h: H } = large ? SIZE.large : SIZE.normal;
+  const plotW = W - MARGIN.left - MARGIN.right;
+  const plotH = H - MARGIN.top - MARGIN.bottom;
+
   const xs = rows.map((r) => statValue(r, xKey));
   const ys = rows.map((r) => statValue(r, yKey));
   const xDom = computeDomain(xs);
@@ -61,20 +69,20 @@ export function StatScatterPlot({
         <rect
           x={MARGIN.left}
           y={MARGIN.top}
-          width={PLOT_W}
-          height={PLOT_H}
+          width={plotW}
+          height={plotH}
           fill="#f8fafd"
           stroke="#d8e0ee"
           rx={4}
         />
         {yTicks.map((tv) => {
-          const y = scaleLinear(tv, yDom, MARGIN.top, MARGIN.top + PLOT_H);
+          const y = scaleAxisY(tv, yDom, MARGIN.top, MARGIN.top + plotH, yKey);
           return (
             <g key={`yg-${tv}`}>
               <line
                 x1={MARGIN.left}
                 y1={y}
-                x2={MARGIN.left + PLOT_W}
+                x2={MARGIN.left + plotW}
                 y2={y}
                 stroke="#e8edf5"
                 strokeWidth={1}
@@ -92,20 +100,20 @@ export function StatScatterPlot({
           );
         })}
         {xTicks.map((tv) => {
-          const x = scaleLinear(tv, xDom, MARGIN.left, MARGIN.left + PLOT_W);
+          const x = scaleAxisX(tv, xDom, MARGIN.left, MARGIN.left + plotW, xKey);
           return (
             <g key={`xg-${tv}`}>
               <line
                 x1={x}
                 y1={MARGIN.top}
                 x2={x}
-                y2={MARGIN.top + PLOT_H}
+                y2={MARGIN.top + plotH}
                 stroke="#e8edf5"
                 strokeWidth={1}
               />
               <text
                 x={x}
-                y={MARGIN.top + PLOT_H + 16}
+                y={MARGIN.top + plotH + 16}
                 textAnchor="middle"
                 className={styles.scatterTick}
               >
@@ -115,15 +123,15 @@ export function StatScatterPlot({
           );
         })}
         {rows.map((row, i) => {
-          const x = scaleLinear(statValue(row, xKey), xDom, MARGIN.left, MARGIN.left + PLOT_W);
-          const y = scaleLinear(statValue(row, yKey), yDom, MARGIN.top, MARGIN.top + PLOT_H);
+          const x = scaleAxisX(statValue(row, xKey), xDom, MARGIN.left, MARGIN.left + plotW, xKey);
+          const y = scaleAxisY(statValue(row, yKey), yDom, MARGIN.top, MARGIN.top + plotH, yKey);
           return (
             <circle
               key={`${row.name}-${i}`}
               cx={x}
               cy={y}
               r={rows.length > 60 ? 2.5 : 3.5}
-              fill={pointColor(row.name)}
+              fill={pointColor(row)}
               fillOpacity={0.72}
               stroke="#fff"
               strokeWidth={0.6}
@@ -137,7 +145,7 @@ export function StatScatterPlot({
           );
         })}
         <text
-          x={MARGIN.left + PLOT_W / 2}
+          x={MARGIN.left + plotW / 2}
           y={H - 6}
           textAnchor="middle"
           className={styles.scatterAxisLabel}
@@ -146,9 +154,9 @@ export function StatScatterPlot({
         </text>
         <text
           x={12}
-          y={MARGIN.top + PLOT_H / 2}
+          y={MARGIN.top + plotH / 2}
           textAnchor="middle"
-          transform={`rotate(-90, 12, ${MARGIN.top + PLOT_H / 2})`}
+          transform={`rotate(-90, 12, ${MARGIN.top + plotH / 2})`}
           className={styles.scatterAxisLabel}
         >
           {yLabel}

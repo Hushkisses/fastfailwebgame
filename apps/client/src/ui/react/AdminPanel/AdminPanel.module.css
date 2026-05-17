@@ -183,36 +183,58 @@
   border-top: 1px solid #e0e6f0;
 }
 
-.scatterSectionHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-
 .scatterSectionTitle {
-  margin: 0;
+  margin: 0 0 12px;
   font-size: 15px;
   font-weight: 800;
   color: #0d1422;
 }
 
-.scatterToggle {
-  padding: 8px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  font-family: inherit;
-  color: #4a3a8a;
-  background: #f0ecfa;
-  border: 1px solid #c8b8e8;
-  border-radius: 8px;
-  cursor: pointer;
+.scatterControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  margin-bottom: 12px;
 }
 
-.scatterToggle:hover {
-  background: #e8e0f8;
+.scatterControl {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+  flex: 1;
+}
+
+.scatterControlLabel {
+  font-size: 12px;
+  font-weight: 700;
+  color: #2a3344;
+}
+
+.scatterSelect {
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  border: 1px solid #c2cfe0;
+  border-radius: 8px;
+  background: #f8fafd;
+  color: #0d1422;
+}
+
+.scatterSingle {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.scatterError {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #a02020;
+  background: #fff0f0;
+  border: 1px solid #e09090;
+  border-radius: 8px;
 }
 
 .scatterLegend {
@@ -234,7 +256,9 @@
 
 .dotConservative,
 .dotBold,
-.dotOther {
+.dotOther,
+.dotStripShown,
+.dotStripHidden {
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -251,6 +275,14 @@
 
 .dotOther {
   background: #6a48c8;
+}
+
+.dotStripShown {
+  background: #1a8fd8;
+}
+
+.dotStripHidden {
+  background: #94a3b8;
 }
 
 .scatterGrid {

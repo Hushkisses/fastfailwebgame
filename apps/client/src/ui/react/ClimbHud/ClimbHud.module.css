@@ -59,3 +59,30 @@
   color: #2a3344;
   white-space: pre-line;
 }
+
+.recentBlock {
+  margin-top: 12px;
+}
+
+.recentLabel {
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #2a3344;
+}
+
+.recentStrip {
+  display: flex;
+  gap: 3px;
+  margin-top: 6px;
+  width: 100%;
+}
+
+.recentCell {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(13, 20, 34, 0.1);
+  box-sizing: border-box;
+}

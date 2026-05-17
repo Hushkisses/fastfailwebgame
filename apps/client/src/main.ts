@@ -79,19 +79,35 @@ async function startSession(
   layout();
   window.addEventListener("resize", layout);
 
+  let pendingPickPath: ("left" | "right")[] | null = null;
+  let lastMultiMatchPhase: "waiting" | "playing" | "ended" = "waiting";
+
   climb.onPick((path) => {
     ensureAudio();
+    pendingPickPath = path;
     net.chooseTilePath(path);
   });
 
   const room: GameRoomLike =
     mode === "solo" ? net.connectSolo(nickname) : await net.connect(nickname);
   useHudStore.getState().setMode(mode);
+  useHudStore.getState().clearRecentTileChoices();
 
   bindHintActions(net, room);
 
   room.onMessage("resolution", (raw: unknown) => {
     const msg = raw as ResolutionEvent;
+    if (msg.id === room.sessionId) {
+      if (
+        pendingPickPath &&
+        !msg.blockedDuplicate &&
+        !msg.respawnLocked &&
+        useHudStore.getState().showRecentTileStrip
+      ) {
+        useHudStore.getState().pushRecentTileChoices(pendingPickPath);
+      }
+      pendingPickPath = null;
+    }
     if (
       msg.id !== room.sessionId &&
       !msg.success &&
@@ -155,6 +171,7 @@ async function startSession(
       pullFromPlayer(p);
       trapKnown = readTrapKeys(p.revealedTrapKeys);
       selfSide = parseSide(p.currentSide);
+      useHudStore.getState().setShowRecentTileStrip(Boolean(p.showRecentTileStrip));
     }
 
     const nowMs = Date.now();
@@ -167,6 +184,10 @@ async function startSession(
     const roundActive = mode !== "multi" || matchPhase === "playing";
     if (mode === "multi") {
       useHudStore.getState().setMultiMatchPhase(matchPhase);
+      if (matchPhase === "playing" && lastMultiMatchPhase !== "playing") {
+        useHudStore.getState().clearRecentTileChoices();
+      }
+      lastMultiMatchPhase = matchPhase;
     }
 
     const pickTargets =
