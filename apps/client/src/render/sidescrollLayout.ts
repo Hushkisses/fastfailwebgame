@@ -95,6 +95,32 @@ export function avatarWorldPos(
   return { x: p.x, y: p.y };
 }
 
+/**
+ * 같은 발판 위 플레이어 마커 배치 — 가로로 채우고, 타일 너비를 넘으면 위쪽 행으로.
+ * `dy`는 위로 올릴 만큼의 양(월드 y에서 빼줌).
+ */
+export function avatarStackOffset(
+  index: number,
+  total: number,
+  tileScale: number
+): { dx: number; dy: number } {
+  if (total <= 0) return { dx: 0, dy: 0 };
+  const spacing = Math.max(10, 13 * tileScale);
+  const rowStep = Math.max(6, 7 * tileScale);
+  const maxWidth = SLAB_HALF_WIDTH * 2 * tileScale * 0.9;
+  const colsPerRow = Math.max(1, Math.floor(maxWidth / spacing) + 1);
+
+  const row = Math.floor(index / colsPerRow);
+  const col = index % colsPerRow;
+  const rowStart = row * colsPerRow;
+  const itemsInRow = Math.min(colsPerRow, total - rowStart);
+
+  const rowWidth = Math.max(0, (itemsInRow - 1) * spacing);
+  const dx = col * spacing - rowWidth / 2;
+  const dy = row * rowStep;
+  return { dx, dy };
+}
+
 export function fallTargetStartWorld(): { x: number; y: number } {
   return { x: 0, y: floorWorldY(1) + ABYSS_EXTRA_Y };
 }

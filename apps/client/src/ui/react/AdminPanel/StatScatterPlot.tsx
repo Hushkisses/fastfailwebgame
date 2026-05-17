@@ -2,6 +2,10 @@ import type { ReactElement } from "react";
 import type { StatRowView } from "./statTypes";
 import {
   computeDomain,
+  formatCorrelation,
+  formatRegressionCoeff,
+  linearRegression,
+  pearsonCorrelation,
   pointColor,
   scaleAxisX,
   scaleAxisY,
@@ -25,6 +29,9 @@ export interface StatScatterPlotProps {
   xLabel: string;
   yLabel: string;
   title: string;
+  correlationLabel: (r: string) => string;
+  trendLabel: (slope: string, intercept: string, interceptSign: string) => string;
+  insufficientLabel: string;
   large?: boolean;
 }
 
@@ -41,6 +48,9 @@ export function StatScatterPlot({
   xLabel,
   yLabel,
   title,
+  correlationLabel,
+  trendLabel,
+  insufficientLabel,
   large = false
 }: StatScatterPlotProps): ReactElement {
   const { w: W, h: H } = large ? SIZE.large : SIZE.normal;
@@ -55,9 +65,53 @@ export function StatScatterPlot({
   const xTicks = tickValues(xDom, 5);
   const yTicks = tickValues(yDom, 5);
 
+  const r = pearsonCorrelation(xs, ys);
+  const reg = linearRegression(xs, ys);
+  const plotLeft = MARGIN.left;
+  const plotRight = MARGIN.left + plotW;
+  const plotTop = MARGIN.top;
+  const plotBottom = MARGIN.top + plotH;
+
+  let trendX1 = 0;
+  let trendY1 = 0;
+  let trendX2 = 0;
+  let trendY2 = 0;
+  let hasTrendLine = false;
+  if (reg) {
+    const xA = xDom.min;
+    const xB = xDom.max;
+    const yA = reg.slope * xA + reg.intercept;
+    const yB = reg.slope * xB + reg.intercept;
+    trendX1 = scaleAxisX(xA, xDom, plotLeft, plotRight, xKey);
+    trendY1 = scaleAxisY(yA, yDom, plotTop, plotBottom, yKey);
+    trendX2 = scaleAxisX(xB, xDom, plotLeft, plotRight, xKey);
+    trendY2 = scaleAxisY(yB, yDom, plotTop, plotBottom, yKey);
+    hasTrendLine = true;
+  }
+
+  const interceptAbs = reg ? formatRegressionCoeff(Math.abs(reg.intercept)) : "";
+  const interceptSign = reg && reg.intercept >= 0 ? "+" : reg && reg.intercept < 0 ? "−" : "";
+
   return (
     <figure className={styles.scatterCard}>
       <figcaption className={styles.scatterTitle}>{title}</figcaption>
+      <p className={styles.scatterStats}>
+        {r !== null && reg
+          ? (
+              <>
+                <span>{correlationLabel(formatCorrelation(r))}</span>
+                <span className={styles.scatterStatsSep}> · </span>
+                <span>
+                  {trendLabel(
+                    formatRegressionCoeff(reg.slope),
+                    interceptAbs,
+                    interceptSign
+                  )}
+                </span>
+              </>
+            )
+          : insufficientLabel}
+      </p>
       <svg
         className={styles.scatterSvg}
         viewBox={`0 0 ${W} ${H}`}
@@ -122,6 +176,18 @@ export function StatScatterPlot({
             </g>
           );
         })}
+        {hasTrendLine ? (
+          <line
+            x1={trendX1}
+            y1={trendY1}
+            x2={trendX2}
+            y2={trendY2}
+            stroke="#e85a4a"
+            strokeWidth={2}
+            strokeOpacity={0.85}
+            strokeDasharray="6 4"
+          />
+        ) : null}
         {rows.map((row, i) => {
           const x = scaleAxisX(statValue(row, xKey), xDom, MARGIN.left, MARGIN.left + plotW, xKey);
           const y = scaleAxisY(statValue(row, yKey), yDom, MARGIN.top, MARGIN.top + plotH, yKey);

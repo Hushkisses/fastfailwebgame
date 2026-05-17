@@ -5,6 +5,13 @@ import { t as rawT, type Locale } from "../../../i18n";
 import { useHudStore } from "../../../state/hudStore";
 import { StatScatterGrid } from "./StatScatterGrid";
 import type { NumericStatKey } from "./statScatter";
+import {
+  countBotsInStats,
+  filterStatsByAudience,
+  isBotStatName,
+  STAT_AUDIENCE_FILTERS,
+  type StatAudienceFilter
+} from "./statBots";
 import type { StatRowView } from "./statTypes";
 import styles from "./AdminPanel.module.css";
 
@@ -56,7 +63,7 @@ function readStatsFromState(state: unknown): StatRowView[] {
 }
 
 function defaultSortDir(key: StatSortKey): StatSortDir {
-  if (key === "rank" || key === "name" || key === "failCount") return "asc";
+  if (key === "rank" || key === "name" || key === "failCount" || key === "avgSelectionWait") return "asc";
   return "desc";
 }
 
@@ -133,6 +140,7 @@ export function AdminPanel(): ReactElement | null {
 
   const [sortKey, setSortKey] = useState<StatSortKey>("rank");
   const [sortDir, setSortDir] = useState<StatSortDir>("asc");
+  const [audienceFilter, setAudienceFilter] = useState<StatAudienceFilter>("players");
 
   const [bump, setBump] = useState(0);
   const forceUpdate = useCallback((): void => {
@@ -157,14 +165,26 @@ export function AdminPanel(): ReactElement | null {
     return countPlayersInRoom(room.state);
   }, [room, phase, bump]);
 
-  const sortedStats = useMemo(() => {
+  const rawStats = useMemo(() => {
     if (!room) return [];
-    const rows = readStatsFromState(room.state);
-    if (rows.length === 0) return rows;
-    const copy = [...rows];
+    return readStatsFromState(room.state);
+  }, [room, phase, bump]);
+
+  const botCount = useMemo(() => countBotsInStats(rawStats), [rawStats]);
+  const playerCount = rawStats.length - botCount;
+  const showStripCohortColumn = audienceFilter !== "bots";
+
+  const filteredStats = useMemo(
+    () => filterStatsByAudience(rawStats, audienceFilter),
+    [rawStats, audienceFilter]
+  );
+
+  const sortedStats = useMemo(() => {
+    if (filteredStats.length === 0) return [];
+    const copy = [...filteredStats];
     copy.sort((a, b) => compareRows(a, b, sortKey, sortDir));
     return copy;
-  }, [room, sortKey, sortDir, phase, bump]);
+  }, [filteredStats, sortKey, sortDir]);
 
   const toggleSort = (key: StatSortKey): void => {
     if (sortKey === key) {
@@ -190,8 +210,6 @@ export function AdminPanel(): ReactElement | null {
         return t("admin.colBest");
       case "currentFloor":
         return t("admin.colCurrentFloor");
-      case "failEnergy":
-        return t("admin.colEnergy");
       case "avgSelectionWaitSec":
         return t("admin.colAvgSelectionWait");
     }
@@ -199,11 +217,6 @@ export function AdminPanel(): ReactElement | null {
 
   const pairTitle = (xKey: NumericStatKey, yKey: NumericStatKey): string =>
     t("admin.scatterPairTitle", { x: axisLabel(xKey), y: axisLabel(yKey) });
-
-  const rawStats = useMemo(() => {
-    if (!room) return [];
-    return readStatsFromState(room.state);
-  }, [room, phase, bump]);
 
   if (!room) {
     return null;
@@ -263,6 +276,38 @@ export function AdminPanel(): ReactElement | null {
 
         <h2 className={styles.statsTitle}>{t("admin.statsTitle")}</h2>
         <p className={styles.sortHint}>{t("admin.statsSortHint")}</p>
+        {phase === "ended" && rawStats.length > 0 ? (
+          <fieldset className={styles.audienceFilter}>
+            <legend className={styles.audienceLegend}>{t("admin.statsAudienceLabel")}</legend>
+            <div className={styles.audienceOptions}>
+              {STAT_AUDIENCE_FILTERS.map((mode) => (
+                <label key={mode} className={styles.audienceOption}>
+                  <input
+                    type="radio"
+                    name="stats-audience"
+                    value={mode}
+                    checked={audienceFilter === mode}
+                    onChange={() => setAudienceFilter(mode)}
+                  />
+                  <span>
+                    {mode === "bots"
+                      ? t("admin.statsAudienceBots")
+                      : mode === "players"
+                        ? t("admin.statsAudiencePlayers")
+                        : t("admin.statsAudienceAll")}
+                  </span>
+                </label>
+              ))}
+            </div>
+            <p className={styles.audienceMeta}>
+              {t("admin.statsAudienceMeta", {
+                shown: filteredStats.length,
+                players: playerCount,
+                bots: botCount
+              })}
+            </p>
+          </fieldset>
+        ) : null}
         {phase === "ended" && sortedStats.length > 0 ? (
           <div className={styles.tableWrap}>
             <table className={styles.table}>
@@ -308,16 +353,18 @@ export function AdminPanel(): ReactElement | null {
                       {sortArrow("avgSelectionWait")}
                     </button>
                   </th>
-                  <th className={styles.th}>
-                    <button
-                      type="button"
-                      className={styles.thBtn}
-                      onClick={() => toggleSort("recentTileStrip")}
-                    >
-                      {t("admin.colRecentTileStrip")}
-                      {sortArrow("recentTileStrip")}
-                    </button>
-                  </th>
+                  {showStripCohortColumn ? (
+                    <th className={styles.th}>
+                      <button
+                        type="button"
+                        className={styles.thBtn}
+                        onClick={() => toggleSort("recentTileStrip")}
+                      >
+                        {t("admin.colRecentTileStrip")}
+                        {sortArrow("recentTileStrip")}
+                      </button>
+                    </th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -331,7 +378,13 @@ export function AdminPanel(): ReactElement | null {
                     <td className={`${styles.td} ${styles.tdNum}`}>
                       {formatAvgWaitSec(row.avgSelectionWaitSec)}
                     </td>
-                    <td className={styles.td}>{formatRecentStripCohort(row.showRecentTileStrip, t)}</td>
+                    {showStripCohortColumn ? (
+                      <td className={styles.td}>
+                        {isBotStatName(row.name)
+                          ? "—"
+                          : formatRecentStripCohort(row.showRecentTileStrip, t)}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -339,26 +392,41 @@ export function AdminPanel(): ReactElement | null {
           </div>
         ) : (
           <p className={styles.empty}>
-            {phase === "ended" && sortedStats.length === 0
+            {phase === "ended" && rawStats.length === 0
               ? t("admin.statsNoPlayers")
-              : t("admin.statsEmpty")}
+              : phase === "ended" && rawStats.length > 0 && filteredStats.length === 0
+                ? audienceFilter === "bots"
+                  ? t("admin.statsNoBots")
+                  : audienceFilter === "players"
+                    ? t("admin.statsNoHumanPlayers")
+                    : t("admin.statsEmpty")
+                : t("admin.statsEmpty")}
           </p>
         )}
 
-        {phase === "ended" && rawStats.length > 0 && (
+        {phase === "ended" && filteredStats.length > 0 && (
           <StatScatterGrid
-            rows={rawStats}
+            rows={filteredStats}
+            audienceFilter={audienceFilter}
+            audienceIncludesPlayers={showStripCohortColumn}
             axisLabel={axisLabel}
             pairTitle={pairTitle}
+            boxTitle={(varLabel) => t("admin.scatterBoxTitle", { var: varLabel })}
             sectionTitle={t("admin.scatterSectionTitle")}
             axisXLabel={t("admin.scatterAxisX")}
             axisYLabel={t("admin.scatterAxisY")}
-            sameAxisError={t("admin.scatterSameAxis")}
             legendConservative={t("admin.scatterLegendConservative")}
             legendBold={t("admin.scatterLegendBold")}
             legendOther={t("admin.scatterLegendOther")}
             legendStripShown={t("admin.scatterLegendStripShown")}
             legendStripHidden={t("admin.scatterLegendStripHidden")}
+            correlationLabel={(r) => t("admin.scatterCorrelation", { r })}
+            trendLabel={(slope, intercept, interceptSign) =>
+              t("admin.scatterTrend", { slope, intercept, interceptSign })
+            }
+            insufficientLabel={t("admin.scatterInsufficient")}
+            boxCountLabel={(n) => t("admin.scatterBoxCount", { n })}
+            boxInsufficientLabel={t("admin.scatterBoxInsufficient")}
           />
         )}
 

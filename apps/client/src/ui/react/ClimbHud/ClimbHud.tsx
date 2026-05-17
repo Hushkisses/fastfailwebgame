@@ -1,4 +1,4 @@
-﻿import type { ReactElement } from "react";
+import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 import { CLIENT_GOAL_FLOOR } from "../../../config/climbConfig";
 import { useHudStore } from "../../../state/hudStore";
@@ -6,19 +6,6 @@ import { useT } from "../useT";
 import { RecentTileStrip } from "./RecentTileStrip";
 import styles from "./ClimbHud.module.css";
 
-const FAIL_ENERGY_STAGE_THRESHOLDS = [0, 180, 600] as const;
-
-function failEnergyProgress(failEnergy: number): number {
-  const energy = Math.max(0, failEnergy);
-  for (let i = 1; i < FAIL_ENERGY_STAGE_THRESHOLDS.length; i++) {
-    const prev = FAIL_ENERGY_STAGE_THRESHOLDS[i - 1]!;
-    const next = FAIL_ENERGY_STAGE_THRESHOLDS[i]!;
-    if (energy < next) return Math.max(0, Math.min(1, (energy - prev) / (next - prev)));
-  }
-  return 1;
-}
-
-/** ??? ?????? 100ms ??? ?? (?? ??? store ???? ??) */
 function useRespawnWait(respawnAvailableAt: number): number {
   const [wait, setWait] = useState(() => computeWait(respawnAvailableAt));
   useEffect(() => {
@@ -46,7 +33,6 @@ export function ClimbHud(): ReactElement {
   const showRecentTileStrip = useHudStore((s) => s.showRecentTileStrip);
   const wait = useRespawnWait(model.respawnAvailableAt);
 
-  const fillPct = `${failEnergyProgress(model.failEnergy) * 100}%`;
   const titleText = [
     t("hud.currentFloor", { floor: model.floor }),
     t("hud.goalFloor", { floor: CLIENT_GOAL_FLOOR })
@@ -60,10 +46,6 @@ export function ClimbHud(): ReactElement {
   return (
     <div className={styles.panel}>
       <div className={styles.title}>{titleText}</div>
-      <div className={styles.energyLabel}>{t("hud.failEnergyLabel")}</div>
-      <div className={styles.energyBar}>
-        <div className={styles.energyFill} style={{ width: fillPct }} />
-      </div>
       {showRecentTileStrip ? (
         <RecentTileStrip
           choices={recentTileChoices}

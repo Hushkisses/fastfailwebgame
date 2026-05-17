@@ -6,7 +6,6 @@ export type NumericStatKey =
   | "failCount"
   | "bestFloorReached"
   | "currentFloor"
-  | "failEnergy"
   | "avgSelectionWaitSec";
 
 export const NUMERIC_STAT_KEYS: NumericStatKey[] = [
@@ -14,7 +13,6 @@ export const NUMERIC_STAT_KEYS: NumericStatKey[] = [
   "currentFloor",
   "bestFloorReached",
   "rank",
-  "failEnergy",
   "avgSelectionWaitSec"
 ];
 
@@ -69,8 +67,6 @@ export function statValue(row: StatRowView, key: NumericStatKey): number {
       return row.bestFloorReached;
     case "currentFloor":
       return row.currentFloor;
-    case "failEnergy":
-      return row.failEnergy;
     case "avgSelectionWaitSec":
       return row.avgSelectionWaitSec;
   }
@@ -115,9 +111,73 @@ export function scaleLinear(
   return rangeMin + t * (rangeMax - rangeMin);
 }
 
-/** 순위는 숫자가 작을수록 좋음 → 축 방향을 반대로 둠 (1위가 오른쪽/위) */
+/** 순위·선택대기는 작을수록 좋음 → 축 방향 반전 (짧은 대기·높은 순위가 오른쪽/위) */
 export function isLowerBetter(key: NumericStatKey): boolean {
-  return key === "rank";
+  return key === "rank" || key === "avgSelectionWaitSec";
+}
+
+function mean(values: number[]): number {
+  if (values.length === 0) return 0;
+  let s = 0;
+  for (const v of values) s += v;
+  return s / values.length;
+}
+
+/** 피어슨 상관계수 r. 분산 0이면 null */
+export function pearsonCorrelation(xs: number[], ys: number[]): number | null {
+  const n = xs.length;
+  if (n < 2 || ys.length !== n) return null;
+  const mx = mean(xs);
+  const my = mean(ys);
+  let num = 0;
+  let dx2 = 0;
+  let dy2 = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i]! - mx;
+    const dy = ys[i]! - my;
+    num += dx * dy;
+    dx2 += dx * dx;
+    dy2 += dy * dy;
+  }
+  const den = Math.sqrt(dx2 * dy2);
+  if (den === 0) return null;
+  return num / den;
+}
+
+export interface LinearRegression {
+  slope: number;
+  intercept: number;
+}
+
+/** 최소제곱 직선 y = slope·x + intercept */
+export function linearRegression(xs: number[], ys: number[]): LinearRegression | null {
+  const n = xs.length;
+  if (n < 2 || ys.length !== n) return null;
+  const mx = mean(xs);
+  const my = mean(ys);
+  let sxx = 0;
+  let sxy = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = xs[i]! - mx;
+    sxx += dx * dx;
+    sxy += dx * (ys[i]! - my);
+  }
+  if (sxx === 0) return null;
+  const slope = sxy / sxx;
+  return { slope, intercept: my - slope * mx };
+}
+
+export function formatCorrelation(r: number): string {
+  return r.toFixed(3);
+}
+
+export function formatRegressionCoeff(v: number): string {
+  if (!Number.isFinite(v)) return "—";
+  const abs = Math.abs(v);
+  if (abs >= 1000) return v.toFixed(0);
+  if (abs >= 10) return v.toFixed(2);
+  if (abs >= 1) return v.toFixed(2);
+  return v.toFixed(3);
 }
 
 /** 가로축: 값이 클수록 오른쪽 (순위 축만 반전 → 1위가 오른쪽) */

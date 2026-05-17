@@ -9,6 +9,7 @@ import {
   GLASS_HALF_H,
   ISO_TOP_HW,
   ISO_TOP_HV,
+  avatarStackOffset,
   avatarWorldPos,
   columnFog,
   fallTargetStartWorld,
@@ -422,8 +423,6 @@ export class TowerWorldView {
     const nowTs = Date.now();
     let si = 0;
     const start = fallTargetStartWorld();
-    const hintedUsers = new Set(inp.activeHints.filter((h) => nowTs < h.expiresAt).map((h) => h.playerId));
-
     const isFallingAlive = (id: string): boolean => {
       const anim = this.falls.get(id);
       if (!anim) return false;
@@ -460,8 +459,6 @@ export class TowerWorldView {
     }
 
     const keysSorted = [...buckets.keys()].sort((a, b) => Number(a.split("|")[0]) - Number(b.split("|")[0]));
-    const nickLine = 17;
-    const bodyLiftPerStack = 6;
 
     for (const key of keysSorted) {
       const arr = buckets.get(key)!;
@@ -479,17 +476,16 @@ export class TowerWorldView {
       arr.forEach((pl, ix) => {
         if (si >= this.slots.length) return;
         const slot = this.slots[si++];
-        const lift = ix * bodyLiftPerStack;
+        const stack = avatarStackOffset(ix, n, twBase.scale);
 
         slot.root.visible = true;
         slot.root.scale.set(twBase.scale);
-        slot.root.position.set(baseX, twBase.y - lift);
+        slot.root.position.set(baseX + stack.dx, twBase.y - stack.dy);
         slot.root.zIndex = -row * 800 + ix;
 
         slot.body.position.set(0, 0);
         const self = pl.id === inp.selfId;
         const many = n > 18;
-        const dist = Math.abs(row - inp.selfFloor);
         const rO = self ? (many ? 8 : 10) : many ? 5 : 7;
         const rI = self ? (many ? 6 : 8) : many ? 4 : 6;
         slot.body.clear().circle(0, 0, rO).stroke({
@@ -503,22 +499,20 @@ export class TowerWorldView {
         });
 
         slot.label.anchor.set(0.5, 1);
-        const showName = self || (dist <= 4 && !many);
-        slot.label.visible = showName;
-        if (!showName) {
+        slot.label.visible = self;
+        if (!self) {
           slot.label.text = "";
         } else {
-          const nmCap = self ? 12 : 10;
+          const nmCap = 12;
           const raw = pl.name.length > nmCap ? `${pl.name.slice(0, nmCap - 1)}…` : pl.name;
-          slot.label.text = self ? `YOU · ${raw}` : raw;
-          slot.label.style.fontSize = self ? 11 : 9;
-          slot.label.style.fontWeight = self ? "800" : "700";
-          const hinted = hintedUsers.has(pl.id);
-          slot.label.style.fill = self ? 0x1a8fd8 : hinted ? 0x6a4a10 : 0x2a3344;
+          slot.label.text = `YOU · ${raw}`;
+          slot.label.style.fontSize = 11;
+          slot.label.style.fontWeight = "800";
+          slot.label.style.fill = 0x1a8fd8;
           slot.label.style.stroke = { color: 0xffffff, width: 4 };
           slot.label.style.align = "center";
           slot.label.style.lineHeight = 13;
-          slot.label.position.set(0, -12 - ix * nickLine);
+          slot.label.position.set(0, -12);
         }
       });
     }
