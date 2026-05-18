@@ -47,8 +47,8 @@ const defaultConfig: BotFillConfig = {
       id: "conservative",
       label: "conservative",
       strategy: "conservative",
-      minThinkMs: 800,
-      maxThinkMs: 2600,
+      minThinkMs: 1400,
+      maxThinkMs: 3000,
       hintChance: 0.15,
       correctChance: DEFAULT_CORRECT_CHANCE
     },
@@ -56,8 +56,8 @@ const defaultConfig: BotFillConfig = {
       id: "bold",
       label: "bold",
       strategy: "bold",
-      minThinkMs: 80,
-      maxThinkMs: 200,
+      minThinkMs: 400,
+      maxThinkMs: 800,
       hintChance: 0.025,
       correctChance: DEFAULT_CORRECT_CHANCE
     }

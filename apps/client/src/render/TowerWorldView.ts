@@ -481,14 +481,15 @@ export class TowerWorldView {
         const many = n > 18;
         const rO = self ? (many ? 8 : 10) : many ? 5 : 7;
         const rI = self ? (many ? 6 : 8) : many ? 4 : 6;
+        const laneTint = side === "left" ? 0x6aa6ff : 0xff8f6a;
         slot.body.clear().circle(0, 0, rO).stroke({
-          width: self ? 2.5 : 1.2,
-          color: self ? 0x000000 : 0x4a5a78,
-          alpha: self ? 0.95 : 0.55
+          width: self ? 2.5 : 2,
+          color: self ? 0x000000 : 0xffffff,
+          alpha: self ? 0.95 : 0.95
         });
         slot.body.circle(0, 0, rI).fill({
-          color: self ? 0x111111 : 0x607890,
-          alpha: self ? 0.92 : 0.55
+          color: self ? 0x111111 : laneTint,
+          alpha: self ? 0.92 : 0.9
         });
 
         slot.label.anchor.set(0.5, 1);
