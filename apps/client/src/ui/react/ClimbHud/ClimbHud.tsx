@@ -1,7 +1,7 @@
 import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
-import { CLIENT_GOAL_FLOOR } from "../../../config/climbConfig";
 import { useHudStore } from "../../../state/hudStore";
+import { useTopLeader } from "../Leaderboard/useTopLeader";
 import { useT } from "../useT";
 import { RecentTileStrip } from "./RecentTileStrip";
 import styles from "./ClimbHud.module.css";
@@ -32,11 +32,7 @@ export function ClimbHud(): ReactElement {
   const recentTileChoices = useHudStore((s) => s.recentTileChoices);
   const showRecentTileStrip = useHudStore((s) => s.showRecentTileStrip);
   const wait = useRespawnWait(model.respawnAvailableAt);
-
-  const titleText = [
-    t("hud.currentFloor", { floor: model.floor }),
-    t("hud.goalFloor", { floor: CLIENT_GOAL_FLOOR })
-  ].join("\n");
+  const { top, isYou } = useTopLeader();
 
   const messages = [
     model.hasWon ? t("hud.win") : "",
@@ -45,7 +41,18 @@ export function ClimbHud(): ReactElement {
 
   return (
     <div className={styles.panel}>
-      <div className={styles.title}>{titleText}</div>
+      <div className={styles.title}>{t("hud.currentFloor", { floor: model.floor })}</div>
+      <div className={styles.leaderLine}>
+        <span className={styles.leaderLabel}>{t("leaderboard.rankOne")}</span>
+        <span className={isYou ? styles.leaderNameSelf : styles.leaderName}>
+          {top === null ? "—" : isYou ? `${top.name} (${t("leaderboard.you")})` : top.name}
+        </span>
+        {top !== null ? (
+          <span className={styles.leaderFloor}>
+            {t("leaderboard.bestFloor", { floor: top.bestFloor })}
+          </span>
+        ) : null}
+      </div>
       {showRecentTileStrip ? (
         <RecentTileStrip
           choices={recentTileChoices}

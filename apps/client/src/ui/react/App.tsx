@@ -4,7 +4,6 @@ import { useHudStore } from "../../state/hudStore";
 import { AdminPanel } from "./AdminPanel/AdminPanel";
 import { ClimbHud } from "./ClimbHud/ClimbHud";
 import { HintBar } from "./HintBar/HintBar";
-import { Leaderboard } from "./Leaderboard/Leaderboard";
 import { MultiRoundBanner } from "./MultiRoundBanner/MultiRoundBanner";
 import { NicknameGate } from "./NicknameGate/NicknameGate";
 import { SoloBadge } from "./SoloBadge/SoloBadge";
@@ -19,7 +18,7 @@ export interface AppProps {
  * React HUD 트리.
  * - gate: <NicknameGate />
  * - admin: <AdminPanel />
- * - solo/multi: <ClimbHud /> + <Leaderboard /> + <HintBar /> (+ solo면 <SoloBadge />)
+ * - solo/multi: <ClimbHud /> + <HintBar /> (+ solo면 <SoloBadge />)
  */
 export function App({ onJoin, onSolo, onAdminSession }: AppProps): ReactElement | null {
   const mode = useHudStore((s) => s.mode);
@@ -34,7 +33,6 @@ export function App({ onJoin, onSolo, onAdminSession }: AppProps): ReactElement 
       {mode === "solo" && <SoloBadge />}
       {mode === "multi" && <MultiRoundBanner />}
       {inGame && <ClimbHud />}
-      {inGame && <Leaderboard />}
       {inGame && <HintBar />}
     </>
   );
