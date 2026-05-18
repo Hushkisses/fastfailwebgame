@@ -56,8 +56,8 @@ const defaultConfig: BotFillConfig = {
       id: "bold",
       label: "bold",
       strategy: "bold",
-      minThinkMs: 400,
-      maxThinkMs: 800,
+      minThinkMs: 200,
+      maxThinkMs: 400,
       hintChance: 0.025,
       correctChance: DEFAULT_CORRECT_CHANCE
     }
